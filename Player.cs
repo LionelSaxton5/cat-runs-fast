@@ -8,17 +8,20 @@ public partial class Player : CharacterBody2D
     [Export] public float BasicGravity = 2000f; //基础重力
     [Export] public float VariableGravity = 3000f; //可变重力
 
-    //动画播放相关
-    private AnimatedSprite2D person; //人物动画节点
-    private AnimatedSprite2D cat; //猫咪动画节点
-    private string Currentanimation = ""; //当前动画名称
-
     private bool isfacingright = true; //是否面向右侧
 
+    //计时器相关
+    public Timer idletimer; //待机计时器
+
+    //动画播放相关
+    private AnimatedSprite2D person; //人物动画节点
+    public AnimatedSprite2D cat; //猫咪动画节点
+    private string Currentanimation = ""; //当前动画名称    
+
     //速度相关
-    private float currentspeed = 0f; //当前速度
-    private float acceleration = 0f; //加速度
-    private float MaxFallSpeed = 600f; //最大下落速度
+    public float currentspeed = 0f; //当前速度
+    public float acceleration = 0f; //加速度
+    public float MaxFallSpeed = 600f; //最大下落速度
 
     //跳跃相关
     private bool isJumping = false; //是否在跳跃   
@@ -26,12 +29,18 @@ public partial class Player : CharacterBody2D
     private const float JumpBufferDuration = 0.1f; //当前剩余的跳跃缓冲时间
     private bool jumpKeyReleased = false; // 跳跃键是否已释放
 
+    //攻击相关
+    public int attackcombo = 0; //攻击次数计数
+    public bool EnhancedAttack = false; //是否为强化攻击
+
     public override void _Ready()
     {
+        //初始化节点
         person = GetNode<AnimatedSprite2D>("Person");
         cat = GetNode<AnimatedSprite2D>("Cat");
+        idletimer = GetNode<Timer>("IdleTimer");
 
-        cat.Visible = false; //初始不可见
+        //cat.Visible = false; //初始不可见
     }
 
     public override void _PhysicsProcess(double delta)
@@ -39,84 +48,18 @@ public partial class Player : CharacterBody2D
         float deltaF = (float)delta;
         var velocity = Velocity; //初始化移动向量
 
+        if (jumpBufferTime > 0) jumpBufferTime -= deltaF; //减少跳跃缓冲时间
+
         HorizontalMovement(ref velocity, deltaF);
         HandleVerticalMovement(ref velocity);
         ApplyVariableGravity(ref velocity, deltaF);
 
-
         Velocity = velocity;
 
         MoveAndSlide(); //内置方法移动
-    }
+    }  
 
-    private enum CharacterStatus //人物状态枚举
-    {
-        idle,
-        walk
-    }
-
-    private enum CatStatus //猫咪状态枚举
-    {
-        attack1, attack2, climb, death, eat, hurt, idle, jump, lick, run, runjump, scare, sleep, slide, waking, walk
-    }
-
-    private void StateSelection() //状态选择方法
-    {
-        CharacterStatus character = new CharacterStatus();
-        CatStatus catStatus = new CatStatus();
-        if (person.Visible)
-        {
-            switch (character)
-            {
-                case CharacterStatus.idle:
-                    break;
-                case CharacterStatus.walk:
-                    break;
-            }
-        }
-        if (cat.Visible)
-        {
-            switch (catStatus)
-            {
-                case CatStatus.idle: //待机
-                    break;
-                case CatStatus.walk: //走路
-                    break;
-                case CatStatus.jump: //跳跃
-                    break;
-                case CatStatus.run: //奔跑
-                    break;
-                case CatStatus.runjump: //助跑跳
-                    break;
-                case CatStatus.attack1: //攻击1
-                    break;
-                case CatStatus.attack2: //攻击2
-                    break;
-                case CatStatus.climb: //攀爬
-                    break;
-                case CatStatus.death: //死亡
-                    break;
-                case CatStatus.eat: //吃东西
-                    break;
-                case CatStatus.hurt: //受伤
-                    break;
-                case CatStatus.scare: //吓唬
-                    break;
-                case CatStatus.sleep: //睡觉
-                    break;
-                case CatStatus.slide: //滑行
-                    break;
-                case CatStatus.waking: //醒来
-                    break;
-                case CatStatus.lick: //舔
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-
-    private void AnimationPlayback(string animation) //动画播放方法
+    public void AnimationPlayback(string animation) //动画播放方法
     {
         if (Currentanimation == animation) //动画相同则返回
             return;
@@ -186,9 +129,10 @@ public partial class Player : CharacterBody2D
         else
         {
             velocity.X = currentspeed; //保持原速
-        }
+        }       
 
         isJumping = true; //设置跳跃状态
+        jumpKeyReleased = false; //重置跳跃键释放状态
     }
 
     private void ApplyVariableGravity(ref Vector2 velocity, float delta) //可变重力曲线
@@ -196,26 +140,23 @@ public partial class Player : CharacterBody2D
         if (!IsOnFloor())
         {
             if (isJumping) //在跳跃过程中
-            {
-                if (velocity.Y < 0) //上升阶段
+            {               
+                if (jumpKeyReleased) //跳跃键已释放
                 {
-                    if (jumpKeyReleased) //跳跃键已释放
-                    {
-                        velocity.Y += VariableGravity * delta; //增加重力,可变重力
-                    }
-                    else
-                    {
-                        velocity.Y += BasicGravity * delta; //基础重力
-                    }
-                    if (velocity.Y > 0) //达到跳跃顶点
-                    {
-                        isJumping = false; //结束跳跃
-                    }
-                }              
+                    velocity.Y += VariableGravity * 3.0f * delta; //增加重力,可变重力
+                }
+                else
+                {
+                    velocity.Y += BasicGravity * delta; //基础重力
+                }
+                if (velocity.Y >= 0) //达到跳跃顶点
+                {
+                    isJumping = false; //结束跳跃
+                }                            
             }
             else //下降阶段,跳跃顶点检查
             {
-                velocity.Y += VariableGravity * 2f * delta; //增加重力
+                velocity.Y += VariableGravity * delta; //增加重力
 
                 if (velocity.Y > MaxFallSpeed) //限制最大下落速度
                 {
@@ -230,7 +171,7 @@ public partial class Player : CharacterBody2D
             jumpKeyReleased = false;
         }
     }
-
+    
     private void Flip(bool facingright) //反转人物
     {
         if (isfacingright == facingright) return; //如果方向没有变化则返回
