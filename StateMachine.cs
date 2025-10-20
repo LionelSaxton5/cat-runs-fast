@@ -11,7 +11,15 @@ public partial class StateMachine : Node
 
     public override void _Ready()
 	{
-		foreach (Node child in GetChildren()) //遍历当前节点的所有子节点
+        // 获取Player节点
+        Player player = GetParent<Player>();
+        if (player == null)
+        {
+            GD.PrintErr("StateMachine: 无法找到Player父节点！");
+            return;
+        }
+
+        foreach (Node child in GetChildren()) //遍历当前节点的所有子节点
 		{
 			if (child is State state) //检查子节点是否是State类型,如果是则进行类型转换
             {
@@ -19,6 +27,7 @@ public partial class StateMachine : Node
 				state.StateFinished += OnStateFinished; //订阅状态完成信号,当状态完成时调用OnStateFinished方法
 				state.SetProcess(false); //初始时禁用状态节点的处理
 				state.SetPhysicsProcess(false); //初始时禁用状态节点的物理处理
+                state.player = player; //将Player节点赋值给状态节点的player成员变量
             }
         }
         
@@ -31,11 +40,16 @@ public partial class StateMachine : Node
 	public void ChangeState(string stateName) //切换状态方法,参数为要切换到的状态名称
     {
 		if (states.ContainsKey(stateName)) //检查状态字典中是否包含指定的状态名称
-        {
-			currentState ?.Exit(); //调用当前状态的退出逻辑
+		{
+			GD.Print($"切换状态: {currentState?.Name} -> {stateName}");
+			currentState?.Exit(); //调用当前状态的退出逻辑
 			currentState = states[stateName]; //切换到新的状态节点
 			currentState.Enter(); //调用新状态的进入逻辑
-        }		
+		}
+		else
+		{
+			GD.PrintErr($"状态机中不存在状态: {stateName}");
+        }
     }
 
 	private void OnStateFinished(string nextState)

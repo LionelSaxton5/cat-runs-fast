@@ -5,11 +5,16 @@ public partial class State : Node //状态基类
 {
 	[Signal] public delegate void StateFinishedEventHandler(string newState); //定义状态完成信号,参数为新的状态名称
 
-    protected Player player; //protected访问修饰符允许子类访问该成员变量
+    private Player Player { get; set; } //私有成员变量用于存储Player节点引用
 
+    public Player player //公开属性用于外部访问player成员变量
+    {
+		get { return Player; } //返回内部存储的Player值
+        set { Player = value; } //设置内部存储的值
+    }
     public override void _Ready()
 	{
-		player = GetParent().GetParent<Player>();//获取Player节点的引用
+        
     }
 
 

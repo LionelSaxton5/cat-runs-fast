@@ -17,14 +17,15 @@ public partial class WalkState : State //行走状态
 
     public override void PhysicsUpdate(double delta)
     {
-		//判断行走状态与会哪些状态进行转换
-
-		if (player.currentspeed > 100f)
+        //判断行走状态与会哪些状态进行转换
+        float absSpeed = Mathf.Abs(player.currentspeed);
+		
+        if (absSpeed > 130f)
 		{
 			EmitSignal(nameof(StateFinished), "RunState"); //切换到奔跑状态
 			return;
         }
-		if (player.currentspeed == 0)
+		if (absSpeed < 10f)
 		{
 			EmitSignal(nameof(StateFinished), "IdleState"); //切换到待机状态
 			return;
@@ -33,11 +34,16 @@ public partial class WalkState : State //行走状态
 		{
 			EmitSignal(nameof(StateFinished), "JumpState"); //切换到跳跃状态
 			return;
-        }
+        }		
 		if (Input.IsActionJustPressed("attack"))
 		{
 			EmitSignal(nameof(StateFinished), "Attack1State"); //切换到攻击状态
 			return;
         }
+        if (Input.IsActionJustPressed("scare"))
+        {
+            EmitSignal(nameof(StateFinished), "ScareState"); //切换到吓唬状态
+            return;
+        }		
     }
 }

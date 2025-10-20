@@ -4,14 +4,11 @@ using System;
 public partial class Player : CharacterBody2D
 {
     [Export] public float speed = 150; //移动速度
-    [Export] public float JumpVelocity = -1000f; //初始跳跃速度
+    [Export] public float JumpVelocity = -600f; //初始跳跃速度
     [Export] public float BasicGravity = 2000f; //基础重力
     [Export] public float VariableGravity = 3000f; //可变重力
 
     private bool isfacingright = true; //是否面向右侧
-
-    //计时器相关
-    public Timer idletimer; //待机计时器
 
     //动画播放相关
     private AnimatedSprite2D person; //人物动画节点
@@ -28,17 +25,12 @@ public partial class Player : CharacterBody2D
     private float jumpBufferTime = 0.0f; //跳跃缓冲时间，“容错”机制，允许玩家在“快要落地”时提前按下跳跃键，角色落地瞬间会自动跳起
     private const float JumpBufferDuration = 0.1f; //当前剩余的跳跃缓冲时间
     private bool jumpKeyReleased = false; // 跳跃键是否已释放
-
-    //攻击相关
-    public int attackcombo = 0; //攻击次数计数
-    public bool EnhancedAttack = false; //是否为强化攻击
-
+    
     public override void _Ready()
     {
         //初始化节点
         person = GetNode<AnimatedSprite2D>("Person");
         cat = GetNode<AnimatedSprite2D>("Cat");
-        idletimer = GetNode<Timer>("IdleTimer");
 
         //cat.Visible = false; //初始不可见
     }
@@ -65,11 +57,11 @@ public partial class Player : CharacterBody2D
             return;
         Currentanimation = animation;
 
-        if (person.Visible)
+        if (person.Visible && person != null)
         {
             person.Play(animation);
         }
-        else if (cat.Visible)
+        else if (cat.Visible && cat != null) 
         {
             cat.Play(animation);
         }
@@ -82,11 +74,11 @@ public partial class Player : CharacterBody2D
 
         if (IsOnFloor()) //在地面上
         {
-            acceleration = direction != 0 ? 1200 : 600; //如有输入则加速，否则减速
+            acceleration = direction != 0 ? 600 : 400; //如有输入则加速，否则减速
         }
         else if(!IsOnFloor()) //在空中,加速度稍微减小
         {
-            acceleration = (direction != 0) ? 800 : 300; //如有输入则加速，否则减速
+            acceleration = (direction != 0) ? 300 : 100; //如有输入则加速，否则减速
         }
 
         currentspeed = Mathf.MoveToward(currentspeed, targetspeed, acceleration * delta); //平滑过渡到目标速度
@@ -105,6 +97,7 @@ public partial class Player : CharacterBody2D
          if (Input.IsActionJustPressed("jump")) //按下触发跳跃
          {
             jumpBufferTime = JumpBufferDuration; //重置跳跃缓冲时间
+            jumpKeyReleased = false; // 按下时重置，确保上升阶段采用按住的重力
          }
          if (jumpBufferTime > 0 && IsOnFloor()) //跳跃缓冲时间大于0且在地面上
          {
@@ -137,7 +130,9 @@ public partial class Player : CharacterBody2D
 
     private void ApplyVariableGravity(ref Vector2 velocity, float delta) //可变重力曲线
     {
-        if (!IsOnFloor())
+        bool groundedThisFrame = IsOnFloor() && velocity.Y >= 0; //在地面
+
+        if (!groundedThisFrame)
         {
             if (isJumping) //在跳跃过程中
             {               
@@ -169,6 +164,7 @@ public partial class Player : CharacterBody2D
             //在地面上，重置跳跃状态和跳跃键释放状态
             isJumping = false;
             jumpKeyReleased = false;
+            if (velocity.Y > 0) velocity.Y = 0; // 避免在地面残余向下速度
         }
     }
     
