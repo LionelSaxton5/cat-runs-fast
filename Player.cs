@@ -8,12 +8,23 @@ public partial class Player : CharacterBody2D
     [Export] public float BasicGravity = 2000f; //基础重力
     [Export] public float VariableGravity = 3000f; //可变重力
 
-    private bool isfacingright = true; //是否面向右侧
+    public bool isfacingright = true; //是否面向右侧
+
+    //检测器节点相关
+    public RayCast2D wallDetector; //墙壁检测器
+    public RayCast2D cliffDetector; //悬崖检测器
+
+    //计时器相关
+    public Timer idletimer;
 
     //动画播放相关
     private AnimatedSprite2D person; //人物动画节点
     public AnimatedSprite2D cat; //猫咪动画节点
     private string Currentanimation = ""; //当前动画名称    
+
+    //状态及相关
+    private Attack1State attackState1; //普通攻击状态节点
+    private SlideState slideState; //滑墙状态节点
 
     //速度相关
     public float currentspeed = 0f; //当前速度
@@ -31,8 +42,15 @@ public partial class Player : CharacterBody2D
         //初始化节点
         person = GetNode<AnimatedSprite2D>("Person");
         cat = GetNode<AnimatedSprite2D>("Cat");
+        idletimer = GetNode<Timer>("IdleTimer");
+        wallDetector = GetNode<RayCast2D>("WallDetector");
+        cliffDetector = GetNode<RayCast2D>("WallDetector/CliffDetector");
 
         //cat.Visible = false; //初始不可见
+
+        //获取状态机子节点
+        attackState1 = GetNode<Attack1State>("StateMachine/Attack1State"); //获取普通攻击状态节点
+        slideState = GetNode<SlideState>("StateMachine/SlideState"); //获取滑墙状态节点
     }
 
     public override void _PhysicsProcess(double delta)
@@ -42,7 +60,10 @@ public partial class Player : CharacterBody2D
 
         if (jumpBufferTime > 0) jumpBufferTime -= deltaF; //减少跳跃缓冲时间
 
-        HorizontalMovement(ref velocity, deltaF);
+        if (!slideState.isSliding || slideState == null) //滑墙状态
+        {
+            HorizontalMovement(ref velocity, deltaF);
+        }
         HandleVerticalMovement(ref velocity);
         ApplyVariableGravity(ref velocity, deltaF);
 
@@ -65,6 +86,10 @@ public partial class Player : CharacterBody2D
         {
             cat.Play(animation);
         }
+        else
+        {
+            GD.PrintErr($"AnimationPlayback: 无法播放 {animation}，person 和 cat 都不可见或为 null");
+        }
     }
 
     private void HorizontalMovement(ref Vector2 velocity, float delta) //水平移动方法
@@ -74,11 +99,16 @@ public partial class Player : CharacterBody2D
 
         if (IsOnFloor()) //在地面上
         {
-            acceleration = direction != 0 ? 600 : 400; //如有输入则加速，否则减速
+            if (attackState1.isAttack)
+            {
+                acceleration = 900f; //攻击时加速度增加
+                targetspeed = direction * 30f; //攻击时目标速度为0
+            }
+            acceleration = direction != 0 ? 600f : 400f; //如有输入则加速，否则减速
         }
         else if(!IsOnFloor()) //在空中,加速度稍微减小
         {
-            acceleration = (direction != 0) ? 300 : 100; //如有输入则加速，否则减速
+            acceleration = (direction != 0) ? 300f : 100f; //如有输入则加速，否则减速
         }
 
         currentspeed = Mathf.MoveToward(currentspeed, targetspeed, acceleration * delta); //平滑过渡到目标速度
@@ -87,8 +117,16 @@ public partial class Player : CharacterBody2D
 
         if (direction != 0)
         {
-            if (direction > 0) Flip(true);
-            if (direction < 0) Flip(false);
+            if (direction > 0) //向右移动
+            {
+                Flip(true);
+                InversionDetector(true);
+            }
+            if (direction < 0)
+            {
+                Flip(false);
+                InversionDetector(false);
+            }
         }       
     }
 
@@ -130,6 +168,12 @@ public partial class Player : CharacterBody2D
 
     private void ApplyVariableGravity(ref Vector2 velocity, float delta) //可变重力曲线
     {
+        if (slideState.isSliding)
+        { 
+            velocity.Y += 100f * delta; //滑墙时固定重力,缓慢下滑
+            return;
+        }
+
         bool groundedThisFrame = IsOnFloor() && velocity.Y >= 0; //在地面
 
         if (!groundedThisFrame)
@@ -175,5 +219,14 @@ public partial class Player : CharacterBody2D
         isfacingright = facingright; //更新方向
         person.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
         cat.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
+    }
+
+    private void InversionDetector(bool facingright) //反转检测器
+    {
+        if (isfacingright == facingright) return;
+
+        isfacingright = facingright; //更新方向
+        wallDetector.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
+        cliffDetector.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
     }
 }

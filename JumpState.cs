@@ -3,7 +3,6 @@ using System;
 
 public partial class JumpState : State //跳跃状态
 {
-
     public override void Enter()
     {
 		player.AnimationPlayback("jump");
@@ -14,13 +13,16 @@ public partial class JumpState : State //跳跃状态
         
     }
 	
-	
-
 	public override void PhysicsUpdate(double delta)
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
-        if (absSpeed < 10f)
+        if (!player.cliffDetector.IsColliding()) //如果上方没有墙
+        {
+            //EmitSignal(nameof(StateFinished), "ClimbState"); //切换到攀爬状态
+            return;
+        }
+        if (player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "IdleState");
             return;
@@ -30,5 +32,22 @@ public partial class JumpState : State //跳跃状态
             EmitSignal(nameof(StateFinished), "Attack1State");
             return;
         }
-	}
+        if(player.wallDetector.IsColliding()) //检测到墙壁碰撞
+        {
+            bool pressingTowardWall = (player.isfacingright && Input.IsActionPressed("right") || 
+                                       !player.isfacingright && Input.IsActionPressed("left")); //是否正朝墙壁方向按键
+            bool isFalling = player.Velocity.Y > 0; //正在下落
+
+            if (pressingTowardWall && isFalling)
+            {
+                EmitSignal(nameof(StateFinished), "SlideState"); //切换到滑墙状态
+                return;
+            }
+        }
+        if (Input.IsActionPressed("down") && Input.IsActionPressed("jump"))
+        {
+            EmitSignal(nameof(StateFinished), "SprintState");
+            return;
+        }
+    }
 }

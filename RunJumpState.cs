@@ -1,33 +1,35 @@
 using Godot;
 using System;
 
-public partial class RunState : State //奔跑状态
+public partial class RunJumpState : State //助跑跳状态
 {
-
     public override void Enter()
     {
-        player.AnimationPlayback("run");
+        player.AnimationPlayback("runjump"); //助跑跳动画
     }
 	
-
-
 	public override void PhysicsUpdate(double delta)
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
-        if (Input.IsActionJustPressed("jump"))
+        if (player.wallDetector.IsColliding())
         {
-            EmitSignal(nameof(StateFinished), "RunJumpState"); //助跑跳状态
+            EmitSignal(nameof(StateFinished), "SlideState");
             return;
         }
-        if (absSpeed < 130f && player.IsOnFloor())
+        if (absSpeed > 130f && player.IsOnFloor())
+        {
+            EmitSignal(nameof(StateFinished), "RunState");
+            return;
+        }
+        if(absSpeed <= 130f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "WalkState");
             return;
         }
-        if (Input.IsActionJustPressed("attack"))
+        if (absSpeed < 10f && player.IsOnFloor())
         {
-            EmitSignal(nameof(StateFinished), "Attack1State"); //切换到攻击状态
+            EmitSignal(nameof(StateFinished), "IdleState");
             return;
         }
         if (Input.IsActionPressed("down") && Input.IsActionPressed("jump"))

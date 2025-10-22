@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 
-public partial class StateMachine : Node
+public partial class StateMachine : Node //状态机节点
 {
 	[Export] private NodePath initialState; //Nodepath用于引用场景树中的节点路径,initialState表示状态机的初始状态节点路径
 	private State currentState; //当前状态节点
@@ -33,7 +33,7 @@ public partial class StateMachine : Node
         
 		if (initialState != null && states.ContainsKey(GetNode<Node>(initialState).Name)) //如果初始状态节点路径不为空,并且状态字典中包含该状态名称
 		{
-            ChangeState(GetNode<Node>(initialState).Name);
+            ChangeState(GetNode<Node>(initialState).Name); //GetNode<Node>(initialState).Name获取初始状态节点的名称,并调用ChangeState方法切换到该状态
         }
 	}
 
