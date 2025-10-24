@@ -25,12 +25,12 @@ public partial class WalkState : State //行走状态
 			EmitSignal(nameof(StateFinished), "RunState"); //切换到奔跑状态
 			return;
         }
-		if (absSpeed < 10f && player.IsOnFloor())
+		if (absSpeed <= 10f && player.IsOnFloor())
 		{
 			EmitSignal(nameof(StateFinished), "IdleState"); //切换到待机状态
 			return;
         }
-		if (Input.IsActionJustPressed("jump"))
+		if (Input.IsActionJustPressed("jump") || !player.IsOnFloor())
 		{
 			EmitSignal(nameof(StateFinished), "JumpState"); //切换到跳跃状态
 			return;
@@ -45,7 +45,7 @@ public partial class WalkState : State //行走状态
             EmitSignal(nameof(StateFinished), "ScareState"); //切换到吓唬状态
             return;
         }
-        if (Input.IsActionPressed("down") && Input.IsActionPressed("jump")) //冲刺状态
+        if (Input.IsActionJustPressed("sprint")) //冲刺状态
         {
             EmitSignal(nameof(StateFinished), "SprintState");
             return;

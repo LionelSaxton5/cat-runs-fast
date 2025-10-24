@@ -56,7 +56,7 @@ public partial class Attack1State : State //普通攻击状态
         if (enhancedattack)
             return;
 
-        if (absSpeed < 10f && player.IsOnFloor())
+        if (absSpeed <= 10f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "IdleState"); //切换到待机状态
             return;
@@ -66,7 +66,7 @@ public partial class Attack1State : State //普通攻击状态
             EmitSignal(nameof(StateFinished), "RunState"); //切换到奔跑状态
             return;
         }
-        if (absSpeed < 130f && player.IsOnFloor())
+        if (absSpeed <= 130f && absSpeed > 10f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "WalkState");
             return;

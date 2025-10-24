@@ -34,9 +34,14 @@ public partial class IdleState : State //待机状态
     }
 
 	public override void PhysicsUpdate(double delta) //每帧物理更新时调用
-	{		
-		//判断待机状态与会哪些状态进行转换
-		if (Input.IsActionPressed("left") || Input.IsActionPressed("right") && player.IsOnFloor())
+	{
+        //判断待机状态与会哪些状态进行转换
+        if (Input.IsActionJustPressed("sprint")) //冲刺状态
+        {
+            EmitSignal(nameof(StateFinished), "SprintState");
+            return;
+        }
+        if (Input.IsActionPressed("left") || Input.IsActionPressed("right") && player.IsOnFloor())
 		{
 			EmitSignal(nameof(StateFinished), "WalkState"); //切换到行走状态
 			return;
@@ -55,12 +60,7 @@ public partial class IdleState : State //待机状态
 		{
             EmitSignal(nameof(StateFinished), "ScareState"); //切换到吓唬状态
 			return;
-        }
-        if (Input.IsActionPressed("down") && Input.IsActionPressed("jump")) //冲刺状态
-        {
-            EmitSignal(nameof(StateFinished), "SprintState");
-            return;
-        }
+        }    
     }
 
 	private void OnIdleTimerTimeout() //计时器超时处理函数

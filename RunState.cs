@@ -15,12 +15,12 @@ public partial class RunState : State //奔跑状态
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
-        if (Input.IsActionJustPressed("jump"))
+        if (Input.IsActionJustPressed("jump") || !player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "RunJumpState"); //助跑跳状态
             return;
         }
-        if (absSpeed < 130f && player.IsOnFloor())
+        if (absSpeed <= 130f && absSpeed > 10f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "WalkState");
             return;
@@ -30,7 +30,7 @@ public partial class RunState : State //奔跑状态
             EmitSignal(nameof(StateFinished), "Attack1State"); //切换到攻击状态
             return;
         }
-        if (Input.IsActionPressed("down") && Input.IsActionPressed("jump"))
+        if (Input.IsActionJustPressed("sprint"))
         {
             EmitSignal(nameof(StateFinished), "SprintState");
             return;

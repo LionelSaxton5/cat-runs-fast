@@ -7,6 +7,7 @@ public partial class Player : CharacterBody2D
     [Export] public float JumpVelocity = -600f; //初始跳跃速度
     [Export] public float BasicGravity = 2000f; //基础重力
     [Export] public float VariableGravity = 3000f; //可变重力
+    [Export] public CharacterAttributes Attributes { get; private set; } //角色属性节点
 
     public bool isfacingright = true; //是否面向右侧
 
@@ -25,6 +26,7 @@ public partial class Player : CharacterBody2D
     //状态及相关
     private Attack1State attackState1; //普通攻击状态节点
     private SlideState slideState; //滑墙状态节点
+    private SprintState sprintState; //冲刺状态节点
 
     //速度相关
     public float currentspeed = 0f; //当前速度
@@ -51,6 +53,7 @@ public partial class Player : CharacterBody2D
         //获取状态机子节点
         attackState1 = GetNode<Attack1State>("StateMachine/Attack1State"); //获取普通攻击状态节点
         slideState = GetNode<SlideState>("StateMachine/SlideState"); //获取滑墙状态节点
+        sprintState = GetNode<SprintState>("StateMachine/SprintState"); //获取冲刺状态节点
     }
 
     public override void _PhysicsProcess(double delta)
@@ -60,7 +63,7 @@ public partial class Player : CharacterBody2D
 
         if (jumpBufferTime > 0) jumpBufferTime -= deltaF; //减少跳跃缓冲时间
 
-        if (!slideState.isSliding || slideState == null) //滑墙状态
+        if (!slideState.isSliding && !sprintState.isSprinting) //滑墙或冲刺状态
         {
             HorizontalMovement(ref velocity, deltaF);
         }
@@ -95,7 +98,9 @@ public partial class Player : CharacterBody2D
     private void HorizontalMovement(ref Vector2 velocity, float delta) //水平移动方法
     {
         var direction = Input.GetAxis("left", "right"); //获取水平输入
-        var targetspeed = direction * speed; //计算目标速度
+
+        var effectiveSpeed = Attributes.GetEffectiveMoveSpeed(speed); //获取有效移动速度
+        var targetspeed = direction * effectiveSpeed; //计算目标速度
 
         if (IsOnFloor()) //在地面上
         {
@@ -150,7 +155,8 @@ public partial class Player : CharacterBody2D
 
     private void StartJump(ref Vector2 velocity) //开始跳跃
     {
-        velocity.Y = JumpVelocity; //初始速度
+        var effectiveJumpPower = Attributes.GetEffectiveJumpPower(JumpVelocity); //获取有效跳跃速度
+        velocity.Y = effectiveJumpPower; //初始速度
 
         if (Mathf.Abs(currentspeed) > 0)
         {

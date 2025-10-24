@@ -22,17 +22,17 @@ public partial class RunJumpState : State //助跑跳状态
             EmitSignal(nameof(StateFinished), "RunState");
             return;
         }
-        if(absSpeed <= 130f && player.IsOnFloor())
+        if(absSpeed <= 130f && absSpeed > 10f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "WalkState");
             return;
         }
-        if (absSpeed < 10f && player.IsOnFloor())
+        if (absSpeed <= 10f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "IdleState");
             return;
         }
-        if (Input.IsActionPressed("down") && Input.IsActionPressed("jump"))
+        if (Input.IsActionJustPressed("sprint"))
         {
             EmitSignal(nameof(StateFinished), "SprintState");
             return;

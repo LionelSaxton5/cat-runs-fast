@@ -17,9 +17,9 @@ public partial class JumpState : State //跳跃状态
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
-        if (!player.cliffDetector.IsColliding()) //如果上方没有墙
+        if (Input.IsActionJustPressed("sprint"))
         {
-            //EmitSignal(nameof(StateFinished), "ClimbState"); //切换到攀爬状态
+            EmitSignal(nameof(StateFinished), "SprintState");
             return;
         }
         if (player.IsOnFloor())
@@ -43,11 +43,6 @@ public partial class JumpState : State //跳跃状态
                 EmitSignal(nameof(StateFinished), "SlideState"); //切换到滑墙状态
                 return;
             }
-        }
-        if (Input.IsActionPressed("down") && Input.IsActionPressed("jump"))
-        {
-            EmitSignal(nameof(StateFinished), "SprintState");
-            return;
         }
     }
 }

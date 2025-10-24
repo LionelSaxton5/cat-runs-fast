@@ -35,12 +35,12 @@ public partial class Attack2State : State //强化攻击状态
         if (isenAttack)
             return;
 
-        if (absSpeed < 10f && player.IsOnFloor())
+        if (absSpeed <= 10f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "IdleState"); //切换到待机状态
             return;
         }
-        if (absSpeed < 130f && player.IsOnFloor())
+        if (absSpeed <= 130f && absSpeed > 10f && player.IsOnFloor())
         {
             EmitSignal(nameof(StateFinished), "WalkState");
             return;

@@ -44,11 +44,6 @@ public partial class SlideState : State //墙上滑动
 
             EmitSignal(nameof(StateFinished), "JumpState");
             return;
-        }
-        if (!player.cliffDetector.IsColliding()) //如果上方没有墙
-        {
-            //EmitSignal(nameof(StateFinished), "ClimbState"); //切换到攀爬状态
-            return;
-        }
+        }       
 	}
 }

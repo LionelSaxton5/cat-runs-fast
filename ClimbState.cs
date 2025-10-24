@@ -28,7 +28,7 @@ public partial class ClimbState : State //攀爬
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
-        if (absSpeed < 10f)
+        if (absSpeed <= 10f)
         {
             EmitSignal(nameof(StateFinished), "IdleState");
             return;
