@@ -81,6 +81,9 @@ public partial class CharacterAttributes : Node //角色属性
     //临时属性修改(用于Buff/Debuff):"效果收藏夹" - 管理所有正在生效的修改器
     private Dictionary<string, AttributeModifier> _activeModifiers = new Dictionary<string, AttributeModifier>();
 
+    //钥匙(Key) = 效果ID（如 "sprint_buff"）
+    //值(Value) = 整个效果包裹对象
+
     public void AddModifier(string id, AttributeModifier modifier) //添加效果到收藏夹
     {
         
@@ -130,5 +133,14 @@ public partial class CharacterAttributes : Node //角色属性
             }
         }
         return totalModifier;
+    }
+
+    //===读档设置属性方法===
+    public void SetAttributes(int _MaxHealth, int _CurrentHealth, int _MaxMana, int _CurrentMana)
+    {
+        MaxHealth = _MaxHealth;
+        CurrentHealth = _CurrentHealth;
+        MaxMana = _MaxMana;
+        CurrentMana = _CurrentMana;
     }
 }
