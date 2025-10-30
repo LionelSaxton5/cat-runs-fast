@@ -19,7 +19,7 @@ public partial class SaveManager : Node //存档、加载
         public int PlayerMaxMana; //玩家最大魔法值
         public bool Playerfacingright; //玩家朝向
         public string[] CompletedLevels; //已完成关卡列表
-        public List<SkillTree> skillTrees; //技能树数据(学会了哪些技能)
+        public string[] UnlockedAbilities; //已解锁的能力ID列表(学会了哪些技能)
         public DateTime SaveTime; //保存时间
     }
 
