@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 
 public partial class SaveManager : Node //存档、加载
 {
-	private SaveManager _instance;
-	public SaveManager Instance => _instance;
+	private static SaveManager _instance;
+	public static SaveManager Instance => _instance;
 
     //存储数据结构
     public class SaveData

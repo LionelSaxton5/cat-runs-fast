@@ -8,9 +8,14 @@ public partial class Attack1State : State //普通攻击状态
     private Timer attackTimer; //攻击计时器
     private bool enhancedattack = false; //是否进行强化攻击
 
+    [Signal] public delegate void Attack1TriggeredEventHandler(); //普通攻击触发信号
+
     public override void Enter()
     {
         player.AnimationPlayback("attack1");
+
+        EmitSignal(nameof(Attack1Triggered));
+
         isAttack = true;
         attackcount++;
         GD.Print("普通攻击次数: " + attackcount);

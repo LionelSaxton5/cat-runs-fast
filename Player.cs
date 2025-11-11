@@ -55,6 +55,11 @@ public partial class Player : CharacterBody2D
         attackState1 = GetNode<Attack1State>("StateMachine/Attack1State"); //获取普通攻击状态节点
         slideState = GetNode<SlideState>("StateMachine/SlideState"); //获取滑墙状态节点
         sprintState = GetNode<SprintState>("StateMachine/SprintState"); //获取冲刺状态节点
+
+        if (CharacterUi.Instance != null)
+        {
+            CharacterUi.Instance.Visible = true; //显示角色UI
+        }       
     }
 
     public override void _PhysicsProcess(double delta)
