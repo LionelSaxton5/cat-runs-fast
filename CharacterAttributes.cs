@@ -16,6 +16,8 @@ public partial class CharacterAttributes : Node //角色属性
     [Export] public int CurrentMana { get; private set; } = 100; //当前魔法值
     [Export] public int ManaSpeed { get; private set; } = 4; //魔法回复速度
     [Export] public int AttackPower { get; private set; } = 10; //攻击力
+    [Export] public int MaxStamina { get; private set; } = 100; //最大体力值
+    [Export] public int CurrentStamina { get; private set; } = 100; //当前体力值
     [Export] public float MoveSpeedMultiplier { get; private set; } = 1.0f; //移动速度倍率
     [Export] public float JumpPowerMultiplier { get; private set; } = 1.0f; //跳跃力倍率
 
@@ -29,6 +31,7 @@ public partial class CharacterAttributes : Node //角色属性
     //===通信系统 - 用于状态机通信===
     [Signal] public delegate void HealthChangedEventHandler(int newHealth, int max); //生命值变化信号
     [Signal] public delegate void ManaChangedEventHandler(int newMana, int maxMana); //魔法值变化信号
+    [Signal] public delegate void StaminaChangedEventHandler(int newStamina, int maxStamina); //体力值变化信号
     [Signal] public delegate void AttackChangedEventHandler(int newAttack); //攻击力变化信号
     [Signal] public delegate void IsDeathChangedEventHandler(); //死亡信号
 
@@ -52,7 +55,7 @@ public partial class CharacterAttributes : Node //角色属性
         CurrentHealth = Mathf.Max(0, CurrentHealth - damage); //取大值
         EmitSignal(nameof(HealthChanged), CurrentHealth, MaxHealth); //血量变化信号
 
-        if (CurrentHealth <= 0)
+        if (CurrentHealth <= 0 && IsDeath)
         {
             EmitSignal(nameof(IsDeathChangedEventHandler));
         }
@@ -74,6 +77,12 @@ public partial class CharacterAttributes : Node //角色属性
     {
         CurrentMana = Mathf.Min(0, CurrentMana + amount);
         EmitSignal(nameof(ManaChanged), CurrentMana, MaxMana);
+    }
+
+    public void StaminaReduction(int staminaamount) //体力扣除
+    {
+        CurrentStamina = Mathf.Max(0, CurrentStamina - staminaamount);
+        EmitSignal(nameof(StaminaChanged), CurrentStamina, MaxStamina); //体力变化信号    
     }
 
     //===属性修改系统(用于状态机)===
@@ -136,11 +145,13 @@ public partial class CharacterAttributes : Node //角色属性
     }
 
     //===读档设置属性方法===
-    public void SetAttributes(int _MaxHealth, int _CurrentHealth, int _MaxMana, int _CurrentMana)
+    public void SetAttributes(int _MaxHealth, int _CurrentHealth, int _MaxMana, int _CurrentMana, int _MaxStamina, int _CurrentStamina)
     {
         MaxHealth = _MaxHealth;
         CurrentHealth = _CurrentHealth;
         MaxMana = _MaxMana;
         CurrentMana = _CurrentMana;
+        MaxStamina = _MaxStamina;
+        CurrentStamina = _CurrentStamina;
     }
 }

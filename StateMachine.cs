@@ -41,7 +41,7 @@ public partial class StateMachine : Node //状态机节点
     {
 		if (states.ContainsKey(stateName)) //检查状态字典中是否包含指定的状态名称
 		{
-			GD.Print($"切换状态: {currentState?.Name} -> {stateName}");
+			//GD.Print($"切换状态: {currentState?.Name} -> {stateName}");
 			currentState?.Exit(); //调用当前状态的退出逻辑
 			currentState = states[stateName]; //切换到新的状态节点
 			currentState.Enter(); //调用新状态的进入逻辑

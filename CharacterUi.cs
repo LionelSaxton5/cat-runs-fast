@@ -29,6 +29,7 @@ public partial class CharacterUi : CanvasLayer //角色界面
 
         player.Attributes.HealthChanged += OnHealthChanged; //订阅血量变化信号
 		player.Attributes.ManaChanged += OnManaChanged; //订阅魔法变化信号
+		player.Attributes.StaminaChanged += OnStaminaChanged; //订阅体力变化信号
     }
 
 	public override void _Process(double delta)
@@ -47,6 +48,11 @@ public partial class CharacterUi : CanvasLayer //角色界面
 		mplabel.Text = $"{currentmana} / {maxmana}";
 	}
 
+	public void OnStaminaChanged(int currentstamina, int maxstamina)
+	{
+		stamina.Value = currentstamina / maxstamina;
+    }
+
     public override void _ExitTree()
     {
         // 取消订阅信号，防止内存泄漏
@@ -54,6 +60,7 @@ public partial class CharacterUi : CanvasLayer //角色界面
         {
             player.Attributes.HealthChanged -= OnHealthChanged;
             player.Attributes.ManaChanged -= OnManaChanged;
+			player.Attributes.StaminaChanged -= OnStaminaChanged;
         }
     }
 }

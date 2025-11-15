@@ -5,7 +5,6 @@ public partial class WalkState : State //行走状态
 {
 	public override void Enter()
 	{
-		GD.Print("进入行走状态");
 		player.AnimationPlayback("walk"); //播放行走动画
     }
 

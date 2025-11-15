@@ -13,10 +13,12 @@ public partial class SaveManager : Node //存档、加载
     {
         public string LevelName; //当前关卡名称
         public Vector2 PlayerPosition; //玩家位置
-        public int PlayerHealth; //玩家血量
-        public int PlayerMana; //玩家魔法值
+        public int PlayerHealth; //玩家当前血量
+        public int PlayerMana; //玩家当前魔法值
+        public int PlyaerStamina; //玩家当前体力值
         public int PlayerMaxHealth; //玩家最大血量
         public int PlayerMaxMana; //玩家最大魔法值
+        public int PlayerMaxStamina; //玩家最大体力值
         public bool Playerfacingright; //玩家朝向
         public string[] CompletedLevels; //已完成关卡列表
         public string[] UnlockedAbilities; //已解锁的能力ID列表(学会了哪些技能)
@@ -33,8 +35,10 @@ public partial class SaveManager : Node //存档、加载
         data.PlayerPosition = player.GlobalPosition;
         data.PlayerHealth = player.Attributes.CurrentHealth;
         data.PlayerMana = player.Attributes.CurrentMana;
+        data.PlyaerStamina = player.Attributes.CurrentStamina;
         data.PlayerMaxHealth = player.Attributes.MaxHealth;
         data.PlayerMaxMana = player.Attributes.MaxMana;
+        data.PlayerMaxStamina = player.Attributes.MaxStamina;
         data.Playerfacingright = player.isfacingright;
         //完成关卡
         //技能树
@@ -85,8 +89,10 @@ public partial class SaveManager : Node //存档、加载
         saveData.PlayerPosition = dataDict["PlayerPosition"].AsVector2(); //玩家位置
         saveData.PlayerHealth = dataDict["PlayerHealth"].AsInt32(); //玩家血
         saveData.PlayerMana = dataDict["PlayerMana"].AsInt32(); //玩家魔法值
+        saveData.PlyaerStamina = dataDict["PlyaerStamina"].AsInt32(); //玩家体力值
         saveData.PlayerMaxHealth = dataDict["PlayerMaxHealth"].AsInt32(); //最大血量
         saveData.PlayerMaxMana = dataDict["PlayerMaxMana"].AsInt32(); //最大魔法值
+        saveData.PlayerMaxStamina = dataDict["PlayerMaxStamina"].AsInt32(); //最大体力值
         saveData.Playerfacingright = dataDict["Playerfacingright"].AsBool(); //玩家朝向
         //完成关卡
         //技能树
@@ -110,6 +116,6 @@ public partial class SaveManager : Node //存档、加载
         player.isfacingright = saveData.Playerfacingright;
 
         //恢复属性
-        player.Attributes.SetAttributes(saveData.PlayerMaxHealth, saveData.PlayerHealth, saveData.PlayerMaxMana, saveData.PlayerMana);
+        player.Attributes.SetAttributes(saveData.PlayerMaxHealth, saveData.PlayerHealth, saveData.PlayerMaxMana, saveData.PlayerMana, saveData.PlayerMaxStamina, saveData.PlyaerStamina);
     }
 }
