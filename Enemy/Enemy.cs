@@ -38,7 +38,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
     //===巡逻逻辑相关===
     private Vector2 patrolStartPosition; //巡逻起始位置
-    private float patrolRadius = 250f; //巡逻半径
+    protected float patrolRadius = 250f; //巡逻半径
     private bool isPatrollingRight = true; //是否向右巡逻
 
     //===重力相关===
@@ -48,7 +48,8 @@ public partial class Enemy : CharacterBody2D //怪物基类
     private double turnAroundCooldown = 0f; //转身冷却计时器
     private const float turnAroundCooldownDuration = 0.5f; // 转身冷却时间
 
-    //===信号===
+    //===方向决策结果===
+    private DirectionCheckResult directionCheck;
 
 
     public override void _Ready()
@@ -84,6 +85,8 @@ public partial class Enemy : CharacterBody2D //怪物基类
         {
             turnAroundCooldown -= delta;
         }
+
+        directionCheck = CheckDirection(); //更新方向决策结果
 
         if (currentState != EnemyState.death)
         {
@@ -162,16 +165,26 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
     protected virtual void UpdateIdle(double delta) //更新Idle状态
     {
-        //如果看到玩家,切换到追逐状态
-        if (CanSeePlayer() && !ShouldTurnAround() && !HeightDifference())
+        if (directionCheck.PlayerNearby && !directionCheck.CanSeePlayer)
         {
-            Filp(PlayerPosition());
-            FilpDetector(PlayerPosition());
+            // 玩家在附近但在背后
+            if (turnAroundCooldown <= 0)
+            {
+                GD.Print($"[Idle] 感知到背后有玩家，转身");
+                SetFacingDirection(directionCheck.PlayerOnRight);
+                turnAroundCooldown = 0.2f;
+            }
+        }
+
+        //如果看到玩家,切换到追逐状态
+        if (directionCheck.CanChasePlayer)
+        {
+            FacePlayer();
             ChangeState(EnemyState.run);
             return;
         }
 
-        if (stateTimer > 2.0 && !CanSeePlayer()) // 2秒后开始巡逻
+        if (stateTimer > 2.0 && !directionCheck.CanSeePlayer) // 2秒后开始巡逻
         {
             ChangeState(EnemyState.walk);
         }
@@ -189,17 +202,24 @@ public partial class Enemy : CharacterBody2D //怪物基类
         patrolStartPosition = GlobalPosition; // 记录巡逻起始位置
         isPatrollingRight = rng.RandiRange(0,1) == 1; // 随机选择初始巡逻方向,1为右,0为左
 
-        Filp(isPatrollingRight);
-        FilpDetector(isPatrollingRight);
+        SetFacingDirection(isPatrollingRight);
     }
 
     protected virtual void UpdateWalk(double delta)
     {
+        if (directionCheck.PlayerNearby && !directionCheck.CanSeePlayer)
+        {          
+            if (turnAroundCooldown <= 0)
+            {
+                GD.Print($"[Walk] 感知到背后有玩家（距离:{directionCheck.PlayerDistance:F0}），转身");
+                SetFacingDirection(directionCheck.PlayerOnRight);
+                turnAroundCooldown = 0.2f; // 短冷却，避免抖动
+            }
+        }
         // 如果看到玩家,切换到追逐状态
-        if (CanSeePlayer() && !ShouldTurnAround() && !HeightDifference())
+        if (directionCheck.CanSeePlayer)
         {
-            Filp(PlayerPosition());
-            FilpDetector(PlayerPosition());
+            FacePlayer();
             ChangeState(EnemyState.run);
             return;
         }
@@ -217,21 +237,17 @@ public partial class Enemy : CharacterBody2D //怪物基类
         float distanceFromStart = Mathf.Abs(GlobalPosition.X - patrolStartPosition.X);
         if (distanceFromStart >= patrolRadius)
         {
-            GD.Print("[Walk] 超出巡逻范围，转身");
             TurnAround();
             return;
         }
 
         // 遇到墙壁或悬崖或斜坡就转身
-        if (ShouldTurnAround() && turnAroundCooldown <= 0)
+        if (directionCheck.ShouldTurnAround) //前方有障碍物且冷却结束
         {
-            GD.Print("[Walk] 检测到障碍物，转身");
             TurnAround();
-            return;
         }
-        else if (ShouldTurnAround() && turnAroundCooldown > 0)
+        else if (directionCheck.HasObstacle && turnAroundCooldown > 0)
         {
-            GD.Print($"[Walk] 检测到障碍物，但在冷却中 ({turnAroundCooldown:F2}秒)");
             // 停止移动，等待冷却
             Velocity = Vector2.Zero;
         }
@@ -246,40 +262,32 @@ public partial class Enemy : CharacterBody2D //怪物基类
     }
     protected virtual void UpdateRun(double delta)
     {
-        if (!CanSeePlayer())
+        if (!directionCheck.CanSeePlayer)
         { 
+            ChangeState(EnemyState.idle);
+            return;
+        }
+             
+        if (directionCheck.HasObstacle || directionCheck.HeightDifference > 15f)
+        {
+            // 如果前方有障碍物或高度差,停止追逐            
             ChangeState(EnemyState.idle);
             return;
         }
 
         //追逐逻辑
         Vector2 direction = (player.GlobalPosition - GlobalPosition).Normalized(); //计算方向向量并归一化
-       
-        if (ShouldTurnAround())
-        {
-            // 如果前方有障碍物,停止追逐
-            if (HeightDifference()) //检测高度差
-            {
-                ChangeState(EnemyState.idle);
-                return;
-            }
-            ChangeState(EnemyState.idle);
-            return;
-        }
-
         Velocity = new Vector2(direction.X * attributes.MoveSpeed * 2f, Velocity.Y); //设置水平速度为100，垂直速度保持不变
 
         //更新方向
         if (Mathf.Abs(direction.X) > 0.1f) //玩家在敌人左右移动时更新面向方向
-        {           
-            Filp(PlayerPosition());
-            FilpDetector(PlayerPosition());
+        {
+            FacePlayer();
         }
 
-        if (GlobalPosition.DistanceTo(player.GlobalPosition) < 30f) //接近玩家时切换到攻击状态
+        if (directionCheck.PlayerDistance < 30f) //接近玩家时切换到攻击状态
         {
-            Filp(PlayerPosition());
-            FilpDetector(PlayerPosition());
+            FacePlayer();
             ChangeState(EnemyState.attack);
             return;
         }
@@ -296,7 +304,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
     {
         if (stateTimer > 0.5f) //攻击动作持续0.5秒
         {
-            if (CanSeePlayer())
+            if (directionCheck.CanSeePlayer)
             {
                 ChangeState(EnemyState.run);
             }
@@ -356,86 +364,104 @@ public partial class Enemy : CharacterBody2D //怪物基类
     protected void ExitDeath() { }
 
     // === 工具方法 ===
-    protected virtual bool ShouldTurnAround() //检测是否需要转身(综合检测墙壁、悬崖和斜坡),返回bool值
+    protected struct DirectionCheckResult //方向决策结果结构体,struct用于封装多个相关变量,(储存检查结果)
     {
-        if (wallDetector.IsColliding())
-        {
-            return true; // 遇到墙壁，转身
-        }
-        if (!cliffDetector.IsColliding())
-        {
-            return true; // 遇到悬崖，转身
-        }
-        if (slopeDetector.IsColliding())
-        { 
-            Vector2 collisionNormal = slopeDetector.GetCollisionNormal(); //获取碰撞法线
-            float slopeAngle = Mathf.Abs(Mathf.RadToDeg(Mathf.Abs(collisionNormal.Dot(Vector2.Up)))); //计算斜坡角度
+        public bool CanSeePlayer;       //是否看到玩家
+        public bool PlayerOnRight;      //玩家是否在右侧
+        public float PlayerDistance;    //与玩家的距离
+        public float HeightDifference;  //与玩家的高度差
 
-            if (slopeAngle > 10f)
-            {
-                GD.Print($"斜坡角度过大: {slopeAngle:F2}度");
-                return true; // 斜坡角度过大，转身
-            }
-        }
-        return false;
+        public bool HasObstacle;        //前方是否有障碍物
+        public bool HasWall;            //前方是否有墙壁
+        public bool HasCliff;           //前方是否有悬崖
+        public bool HasSteepSlope;      //前方是否有陡峭斜坡
+        public float SlopeAngle;        //斜坡角度
+
+        public bool CanChasePlayer;     // 是否可以追逐玩家（综合判断）
+        public bool ShouldTurnAround;   // 是否应该转身（巡逻时）
+
+        public bool PlayerNearby;       // 玩家是否在附近（不考虑方向）
+        public float AlertRange;        // 警戒范围
     }
 
-    protected virtual bool CanSeePlayer() //检测是否看到玩家,返回bool值
+    protected virtual DirectionCheckResult CheckDirection() //(统一的方向检查方法),返回DirectionCheckResult结构体
     {
+        var result = new DirectionCheckResult();
+        result.AlertRange = 200f; //设置警戒范围
+
+        //=== 玩家相关检测 ===
+        //射线检测（单向视野）
         bool rightDetected = playerDetectorRight.IsColliding() && playerDetectorRight.GetCollider() is Player;
         bool leftDetected = playerDetectorLeft.IsColliding() && playerDetectorLeft.GetCollider() is Player;
+        result.CanSeePlayer = rightDetected || leftDetected;
 
-        return rightDetected || leftDetected;
-    }
+        //距离检测（360度感知）
+        result.PlayerDistance = GlobalPosition.DistanceTo(player.GlobalPosition);
+        result.PlayerNearby = result.PlayerDistance < result.AlertRange;
 
-    public virtual bool PlayerPosition() //检测玩家在敌人左侧还是右侧,返回bool值,true表示在右侧
-    {
-        Vector2 direction = (player.GlobalPosition - GlobalPosition).Normalized();
-        return direction.X > 0;
-    }
-
-    public virtual bool HeightDifference() //检测与玩家高度差,返回bool值
-    {
-        float verticalDistance = Mathf.Abs(player.GlobalPosition.Y - GlobalPosition.Y);
-
-        if (verticalDistance > 15f)
+        if (result.CanSeePlayer || result.PlayerNearby)
         {
-            GD.Print($"高度差过大: 垂直={verticalDistance:F0}");
-            return true; // 高度差过大
+            Vector2 direction = (player.GlobalPosition - GlobalPosition).Normalized();
+            result.PlayerOnRight = direction.X > 0;
+            result.HeightDifference = Mathf.Abs(player.GlobalPosition.Y - GlobalPosition.Y);
         }
-        else
+
+        //=== 障碍相关检测 ===
+        result.HasWall = wallDetector.IsColliding();
+        result.HasCliff = !cliffDetector.IsColliding();
+        result.HasSteepSlope = slopeDetector.IsColliding();
+
+        if (result.HasSteepSlope)
         {
-            return false; // 高度差在可接受范围内
+            Vector2 collisionNormal = slopeDetector.GetCollisionNormal(); //获取碰撞法线
+            result.SlopeAngle = Mathf.Abs(Mathf.RadToDeg(Mathf.Acos(collisionNormal.Dot(Vector2.Up)))); //计算斜坡角度
+            result.HasSteepSlope = result.SlopeAngle > 10f; //超过10度视为陡峭斜坡
         }
+
+        result.HasObstacle = result.HasWall || result.HasCliff || result.HasSteepSlope;
+
+        //=== 综合判断 ===
+        //能追逐玩家的条件：看到玩家 + 前方无障碍物 + 高度差合适
+        result.CanChasePlayer = result.CanSeePlayer && !result.HasObstacle && result.HeightDifference < 15f;
+
+        //巡逻时是否应该转身的条件: 前方有障碍物 + 转身冷却结束
+        result.ShouldTurnAround = result.HasObstacle && turnAroundCooldown <= 0;
+
+        return result;
     }
 
-    public virtual void Filp(bool facingright)
-	{ 
-		isfacingright = facingright;
+    protected void SetFacingDirection(bool faceRight) //统一设置面向方向方法
+    {
+        if (isfacingright == faceRight) return; // 方向相同则跳过
+        isfacingright = faceRight;
 
-		animatedSprite.FlipH = !facingright;
-    }
+        // 翻转动画
+        animatedSprite.FlipH = !faceRight;
 
-	public virtual void FilpDetector(bool facingright)
-	{       
-		playerDetectorRight.Enabled = facingright; //朝右侧检测器启动
-        playerDetectorLeft.Enabled = !facingright; //朝左侧检测器启动
+        // 翻转检测器
+        playerDetectorRight.Enabled = faceRight;
+        playerDetectorLeft.Enabled = !faceRight;
 
-        var scale = playerDetectorRight.Scale; // 使用右侧检测器作为基准
-        scale.X = facingright ? 1 : -1;
-
-		wallDetector.Scale = scale;
-		cliffDetector.Scale = scale;
+        var scale = playerDetectorRight.Scale;
+        scale.X = faceRight ? 1 : -1;
+        wallDetector.Scale = scale;
+        cliffDetector.Scale = scale;
         slopeDetector.Scale = scale;
     }
-
-    private void TurnAround() //统一转身方法
-    { 
-        isfacingright = !isfacingright;
-        Filp(isfacingright);
-        FilpDetector(isfacingright);
+         
+    protected void TurnAround() //统一转身方法（巡逻时使用）
+    {
+        SetFacingDirection(!isfacingright);       
         patrolStartPosition = GlobalPosition; // 重置巡逻起始位置
         turnAroundCooldown = turnAroundCooldownDuration; // 启动冷却
+    }
+
+    protected void FacePlayer() //面向玩家方法
+    {
+        if (directionCheck.CanSeePlayer)
+        {
+            SetFacingDirection(directionCheck.PlayerOnRight);
+        }
     }
 
     protected virtual void ApplyGravity(double delta) //应用重力方法
@@ -451,7 +477,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
     }
 
     //===信号方法===
-    private void OnAttackAreaBodyEntered(Node boby)
+    protected void OnAttackAreaBodyEntered(Node boby)
     {
         if(currentState == EnemyState.attack)
         {
