@@ -9,6 +9,13 @@ public partial class AbilityData //能力数据
     public string Description { get; set; } //能力描述
     public Texture2D Icon { get; set; } //能力图标
 
+    //===伤害相关属性(可选)===
+    public int BaseDamage { get; set; } = 0;              // 基础伤害（0表示非攻击技能）
+    public float KnockbackForce { get; set; } = 0f;       // 击退力
+    public float CooldownTime { get; set; } = 0f;         // 冷却时间
+    public float Duration { get; set; } = 0f;             // 持续时间（如冲刺持续0.3秒）
+    public bool IsAttackAbility { get; set; } = false;    // 是否是攻击技能
+
     public enum abilityDatalist //能力类型列表
     {
         sprint, //冲刺

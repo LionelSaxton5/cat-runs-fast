@@ -15,7 +15,8 @@ public partial class CharacterAttributes : Node //角色属性
     [Export] public int MaxMana { get; private set; } = 100; //最大魔法值
     [Export] public int CurrentMana { get; private set; } = 100; //当前魔法值
     [Export] public int ManaSpeed { get; private set; } = 4; //魔法回复速度
-    [Export] public int AttackPower { get; private set; } = 10; //攻击力
+    [Export] public int AttackPower { get; private set; } = 20; //攻击力
+    [Export] public float KnockbackForce { get; private set; } = 300f; //击退力
     [Export] public int MaxStamina { get; private set; } = 100; //最大体力值
     [Export] public int CurrentStamina { get; private set; } = 100; //当前体力值
     [Export] public float MoveSpeedMultiplier { get; private set; } = 1.0f; //移动速度倍率

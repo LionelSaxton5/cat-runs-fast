@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Security.Cryptography.X509Certificates;
+using static CombatSystem;
 
 public partial class Enemy : CharacterBody2D //怪物基类
 {   
@@ -25,9 +26,11 @@ public partial class Enemy : CharacterBody2D //怪物基类
     private bool isfacingright = true; //是否面向右侧
 
     private AnimatedSprite2D animatedSprite;
-    private Area2D area2d;
+    private Area2D attackArea;
     private Player player;
-    private EnemyAttributes attributes;
+    public EnemyAttributes attributes;
+    private CombatSystem combatSystem;
+    private AnimationPlayer animationPlayer;
 
     //===探测器相关===
     private RayCast2D playerDetectorRight; //玩家右检测器
@@ -59,9 +62,11 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
         player = GetTree().GetNodesInGroup("Player")[0] as Player;
         animatedSprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-        area2d = GetNode<Area2D>("Area2D");
-        
+        attackArea = GetNode<Area2D>("AttackArea2D");
+        animationPlayer = GetNode<AnimationPlayer>("AttackArea2D/AnimationPlayer");
+
         attributes = new EnemyAttributes(); //初始化属性组件
+        combatSystem = GetNode<CombatSystem>("/root/CombatSystem");
 
         playerDetectorRight = GetNode<RayCast2D>("PlayerDetectorRight");
         playerDetectorLeft = GetNode<RayCast2D>("PlayerDetectorRight/PlayerDetectorLeft");
@@ -71,7 +76,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
         EnterState(currentState);
 
-        area2d.BodyEntered += OnAttackAreaBodyEntered; //攻击范围信号
+        attackArea.BodyEntered += OnAttackAreaBodyEntered; //攻击信号
         attributes.IsDeathChanged += EnterDeath; //死亡信号
         attributes.IsHurtChanged += EnterHurt;   //受伤信号 
     }
@@ -183,7 +188,12 @@ public partial class Enemy : CharacterBody2D //怪物基类
             ChangeState(EnemyState.run);
             return;
         }
-
+        if (directionCheck.PlayerDistance < 30f && stateTimer > 0.5f)
+        {
+            FacePlayer();
+            ChangeState(EnemyState.attack);
+            return;
+        }
         if (stateTimer > 2.0 && !directionCheck.CanSeePlayer) // 2秒后开始巡逻
         {
             ChangeState(EnemyState.walk);
@@ -215,6 +225,12 @@ public partial class Enemy : CharacterBody2D //怪物基类
                 SetFacingDirection(directionCheck.PlayerOnRight);
                 turnAroundCooldown = 0.2f; // 短冷却，避免抖动
             }
+        }
+        if (directionCheck.PlayerDistance < 30f && stateTimer > 0.5f)
+        {
+            FacePlayer();
+            ChangeState(EnemyState.attack);
+            return;
         }
         // 如果看到玩家,切换到追逐状态
         if (directionCheck.CanSeePlayer)
@@ -285,7 +301,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
             FacePlayer();
         }
 
-        if (directionCheck.PlayerDistance < 30f) //接近玩家时切换到攻击状态
+        if (directionCheck.PlayerDistance < 30f && stateTimer > 0.5f) //接近玩家时切换到攻击状态
         {
             FacePlayer();
             ChangeState(EnemyState.attack);
@@ -298,6 +314,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
     protected virtual void EnterAttack() 
     {
         Velocity = Vector2.Zero;
+        animationPlayer.Play("Attack");
         animatedSprite.Play("attack");
     }
     protected virtual void UpdateAttack(double delta) 
@@ -319,24 +336,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
     //=== 受伤状态 ===
     protected virtual void EnterHurt() 
-    {
-        Vector2 direction = (player.GlobalPosition - GlobalPosition).Normalized();
-
-        if (Mathf.Abs(direction.X) > 0.1f) //玩家在敌人左右移动时更新面向方向
-        {
-            bool facingright = direction.X > 0;
-            float knockbackForce = 200f; //击退力大小
-
-            if (facingright)
-            {
-                Velocity = new Vector2(-knockbackForce, -knockbackForce / 2); //向左击退并略微向上
-            }
-            else
-            {
-                Velocity = new Vector2(knockbackForce, -knockbackForce / 2); //向右击退并略微向上
-            }
-        }
-            
+    {        
         animatedSprite.Play("hurt");
     }
     protected virtual void UpdateHurt(double delta)
@@ -439,8 +439,8 @@ public partial class Enemy : CharacterBody2D //怪物基类
         animatedSprite.FlipH = !faceRight;
 
         // 翻转检测器
-        playerDetectorRight.Enabled = faceRight;
-        playerDetectorLeft.Enabled = !faceRight;
+        playerDetectorRight.Enabled = true;
+        playerDetectorLeft.Enabled = true;
 
         var scale = playerDetectorRight.Scale;
         scale.X = faceRight ? 1 : -1;
@@ -479,12 +479,20 @@ public partial class Enemy : CharacterBody2D //怪物基类
     //===信号方法===
     protected void OnAttackAreaBodyEntered(Node boby)
     {
-        if(currentState == EnemyState.attack)
+        if (currentState != EnemyState.attack) return;
+        
+        if (boby is Player targetPlayer)
         {
-            if (boby is Player targetPlayer)
+            DamageInfo damageInfo = new DamageInfo
             {
-                targetPlayer.Attributes.TakeDamage(attributes.AttackPower);
-            }
-        }
+                DamageAmount = attributes.AttackPower,
+                DamagePosition = GlobalPosition,
+                KnockbackForce = attributes.KnockbackForce,
+                SourceDamage = this,
+                TargetDamage = targetPlayer
+            };
+
+            combatSystem.ApplyDamage(targetPlayer, damageInfo);
+        }      
     }
 }

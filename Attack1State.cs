@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using static CombatSystem;
 
 public partial class Attack1State : State //普通攻击状态
 {
@@ -9,23 +10,25 @@ public partial class Attack1State : State //普通攻击状态
     private bool enhancedattack = false; //是否进行强化攻击
 
     [Signal] public delegate void Attack1TriggeredEventHandler(); //普通攻击触发信号
-
+   
     public override void Enter()
     {
+        if (player.cat.Visible)
+        {
+            GD.Print("连接攻击动画完成信号");
+            player.cat.AnimationFinished += OnAttackAnimationFinished; //动画完成信号
+            attackArea.BodyEntered += OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
+        }
+
         player.AnimationPlayback("attack1");
+        animationPlayer.Play("Attack1");
 
         EmitSignal(nameof(Attack1Triggered));
 
         isAttack = true;
         attackcount++;
         GD.Print("普通攻击次数: " + attackcount);
-
-        if (player.cat.Visible)
-        {
-            GD.Print("连接攻击动画完成信号");
-            player.cat.AnimationFinished += OnAttackAnimationFinished; //动画完成信号
-        }
-
+        
         //设置攻击计时器
         attackTimer = new Timer();
         attackTimer.WaitTime = 0.5f; //设置计时器时间为0.5秒
@@ -42,6 +45,7 @@ public partial class Attack1State : State //普通攻击状态
         {
             GD.Print("断开攻击动画完成信号");
             player.cat.AnimationFinished -= OnAttackAnimationFinished; //断开动画完成信号
+            attackArea.BodyEntered -= OnAttackAreaBodyEntered; //断开攻击范围碰撞信号
         }
         if (attackTimer != null)
         {
@@ -88,6 +92,22 @@ public partial class Attack1State : State //普通攻击状态
             attackcount = 0;
             enhancedattack = false;
             return;
+        }
+    }
+
+    public void OnAttackAreaBodyEntered(Node2D body)
+    {
+        if (isAttack && body is Enemy enemy) //检测到敌人
+        {
+            DamageInfo damageInfo = new DamageInfo
+            {
+                DamageAmount = player.Attributes.AttackPower, //基础伤害10，可通过属性系统修改
+                DamagePosition = player.GlobalPosition,
+                KnockbackForce = player.Attributes.KnockbackForce,
+                SourceDamage = this.player,
+                TargetDamage = enemy
+            };
+            combatSystem.ApplyDamage(enemy, damageInfo); //应用伤害
         }
     }
 

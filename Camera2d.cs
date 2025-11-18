@@ -17,7 +17,7 @@ public partial class Camera2d : Camera2D //人物相机
 
     //===相机缩放相关===
     public float normalZoom = 3.51f; //正常缩放值
-    public float attackZoom = 4.0f; //相机视口最小缩放值
+    public float attackZoom = 3.75f; //相机视口最小缩放值
     private float currentZoom = 3.51f; //当前相机缩放值
 
     private Player player;
@@ -47,7 +47,8 @@ public partial class Camera2d : Camera2D //人物相机
 
         if (isVibrating || isRecovering)
         {
-            AttackVibration(deltaF);
+            if(!CombatSystem.Instance.IsVibrating)
+                AttackVibration(deltaF);
         }       
         else if (Mathf.Abs(player.currentspeed) < 5f && player.IsOnFloor())
         {
@@ -84,11 +85,11 @@ public partial class Camera2d : Camera2D //人物相机
 
         if (isVibrating)
         {
-            float vibrationX = (float)(random.NextDouble() * 2 - 1) * 2f; //范围 -2 到 2
-            float vibrationY = (float)(random.NextDouble() * 2 - 1) * 2f; //范围 -2 到 2           
+            float vibrationX = (float)(random.NextDouble() * 2 - 1) * 1f; //范围 -1 到 1
+            float vibrationY = (float)(random.NextDouble() * 2 - 1) * 1f; //范围 -1 到 1         
             Offset = new Vector2(vibrationX, vibrationY);
 
-            currentZoom = Mathf.MoveToward(currentZoom, attackZoom, 10f * delta);
+            currentZoom = Mathf.MoveToward(currentZoom, attackZoom, 5f * delta);
             Zoom = new Vector2(currentZoom, currentZoom);
 
             if (vibrationTime >= VibrationDuration)
