@@ -54,6 +54,11 @@ public partial class Enemy : CharacterBody2D //怪物基类
     //===方向决策结果===
     private DirectionCheckResult directionCheck;
 
+    //===斜坡逃脱机制===
+    private double slopeStuckTimer = 0.0; //斜坡停留计时器
+    private const double SlopeStuckThreshold = 2.0; //斜坡停留阈值（秒）
+    private bool isEscapingSlope = false; //是否正在逃离斜坡
+
 
     public override void _Ready()
 	{
@@ -91,7 +96,9 @@ public partial class Enemy : CharacterBody2D //怪物基类
             turnAroundCooldown -= delta;
         }
 
-        directionCheck = CheckDirection(); //更新方向决策结果
+        directionCheck = CheckDirection(); //更新方向决策结果,每帧创建
+
+        CheckAndEscapeSlope(delta); //检查并逃离斜坡
 
         if (currentState != EnemyState.death)
         {
@@ -170,6 +177,8 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
     protected virtual void UpdateIdle(double delta) //更新Idle状态
     {
+        if (isEscapingSlope) return;
+
         if (directionCheck.PlayerNearby && !directionCheck.CanSeePlayer)
         {
             // 玩家在附近但在背后
@@ -217,6 +226,8 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
     protected virtual void UpdateWalk(double delta)
     {
+        if (isEscapingSlope) return;
+
         if (directionCheck.PlayerNearby && !directionCheck.CanSeePlayer)
         {          
             if (turnAroundCooldown <= 0)
@@ -278,6 +289,8 @@ public partial class Enemy : CharacterBody2D //怪物基类
     }
     protected virtual void UpdateRun(double delta)
     {
+        if (isEscapingSlope) return;
+
         if (!directionCheck.CanSeePlayer)
         { 
             ChangeState(EnemyState.idle);
@@ -314,8 +327,8 @@ public partial class Enemy : CharacterBody2D //怪物基类
     protected virtual void EnterAttack() 
     {
         Velocity = Vector2.Zero;
-        animationPlayer.Play("Attack");
         animatedSprite.Play("attack");
+        animationPlayer.Play("Attack");
     }
     protected virtual void UpdateAttack(double delta) 
     {
@@ -341,9 +354,16 @@ public partial class Enemy : CharacterBody2D //怪物基类
     }
     protected virtual void UpdateHurt(double delta)
     {
-        if (stateTimer > 0.5f)
+        if (stateTimer > 0.4f)
         {
-            ChangeState(previousState);
+            if (directionCheck.CanSeePlayer)
+            {
+                ChangeState(EnemyState.run); // 如果玩家在附近，继续追逐
+            }
+            else
+            {
+                ChangeState(EnemyState.idle); // 否则回到待机
+            }
         }
     }
     protected virtual void ExitHurt() { }
@@ -415,7 +435,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
         {
             Vector2 collisionNormal = slopeDetector.GetCollisionNormal(); //获取碰撞法线
             result.SlopeAngle = Mathf.Abs(Mathf.RadToDeg(Mathf.Acos(collisionNormal.Dot(Vector2.Up)))); //计算斜坡角度
-            result.HasSteepSlope = result.SlopeAngle > 10f; //超过10度视为陡峭斜坡
+            result.HasSteepSlope = result.SlopeAngle > 5f; //超过5度视为陡峭斜坡
         }
 
         result.HasObstacle = result.HasWall || result.HasCliff || result.HasSteepSlope;
@@ -428,6 +448,36 @@ public partial class Enemy : CharacterBody2D //怪物基类
         result.ShouldTurnAround = result.HasObstacle && turnAroundCooldown <= 0;
 
         return result;
+    }
+
+    private void CheckAndEscapeSlope(double delta) //逃离斜坡
+    {
+        if (currentState == EnemyState.death) return;
+
+        bool onSlope = directionCheck.HasSteepSlope; //检测是否在斜坡上
+        if (onSlope)
+        {
+            slopeStuckTimer += delta;
+            if (slopeStuckTimer >= SlopeStuckThreshold)
+            {
+                isEscapingSlope = true;
+                GD.Print($"[{Name}] 卡在斜坡上，启动逃离机制");
+            }
+        }
+        else
+        {
+            slopeStuckTimer = 0.0;
+            isEscapingSlope = false;
+        }
+
+        if (isEscapingSlope)
+        {
+            // 反方向移动以逃离斜坡
+            float escapeSpeed = attributes.MoveSpeed * 1.5f;
+            ChangeState(EnemyState.run); //切换到奔跑状态
+            Velocity = new Vector2(isfacingright ? -escapeSpeed : escapeSpeed, Velocity.Y);
+            GD.Print($"[{Name}] 逃离斜坡中，速度: {Velocity.X}");
+        }
     }
 
     protected void SetFacingDirection(bool faceRight) //统一设置面向方向方法
@@ -476,10 +526,40 @@ public partial class Enemy : CharacterBody2D //怪物基类
         }
     }
 
+    public void LimitKnockbackVelocity(ref Vector2 knockbackVelocity) //限制击退速度方法
+    {
+        bool originalFacing = isfacingright; //保存当前朝向
+        bool knockbackToRight = knockbackVelocity.X > 0; // 临时改变朝向到击退方向,检测前方障碍
+        SetFacingDirection(knockbackToRight);
+
+        var obstacleCheck = CheckDirection(); //重新检测击退方向的前方障碍
+        SetFacingDirection(originalFacing); //恢复朝向
+
+        
+        if (obstacleCheck.HasSteepSlope)
+        {
+            GD.Print($"[{Name}] 击退方向前方有陡坡，减弱击退");
+            knockbackVelocity.X *= 0.3f;
+            Velocity = new Vector2(knockbackVelocity.X, knockbackVelocity.Y);
+        }
+        else if (obstacleCheck.HasWall)
+        {
+            GD.Print($"[{Name}] 击退方向前方有墙壁，阻止击退");
+            knockbackVelocity.X = -knockbackVelocity.X * 0.4f;
+            knockbackVelocity.Y *= 0.5f;
+            Velocity = new Vector2(knockbackVelocity.X, knockbackVelocity.Y);
+        }
+    }
+
     //===信号方法===
     protected void OnAttackAreaBodyEntered(Node boby)
     {
-        if (currentState != EnemyState.attack) return;
+        GD.Print("攻击命中检测");
+        if (currentState != EnemyState.attack)
+        {
+            GD.Print($"  -> 不在攻击状态，忽略");
+            return;
+        }
         
         if (boby is Player targetPlayer)
         {

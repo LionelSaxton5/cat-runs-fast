@@ -3,15 +3,21 @@ using System;
 
 public partial class RunState : State //奔跑状态
 {
-
+    private bool isHurt = false; //是否受伤
+    
     public override void Enter()
     {
         player.AnimationPlayback("run");
+        player.Attributes.HurtChanged += OnHurtChanged; 
     }
-	
+
+    public override void Exit()
+    {
+        player.Attributes.HurtChanged -= OnHurtChanged;
+    }
 
 
-	public override void PhysicsUpdate(double delta)
+    public override void PhysicsUpdate(double delta)
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
@@ -35,5 +41,15 @@ public partial class RunState : State //奔跑状态
             EmitSignal(nameof(StateFinished), "SprintState");
             return;
         }
+        if (isHurt)
+        {
+            EmitSignal(nameof(StateFinished), "HurtState");
+            isHurt = false;
+            return;
+        }
+    }
+    public void OnHurtChanged()
+    {
+        isHurt = true;
     }
 }

@@ -3,15 +3,18 @@ using System;
 
 public partial class WalkState : State //行走状态
 {
-	public override void Enter()
+    private bool isHurt = false; //是否受伤
+    
+    public override void Enter()
 	{
 		player.AnimationPlayback("walk"); //播放行走动画
+        player.Attributes.HurtChanged += OnHurtChanged; //订阅血量变化信号       
     }
 
 	public override void Exit()
 	{
-		
-	}
+        player.Attributes.HurtChanged -= OnHurtChanged;
+    }
 
 
     public override void PhysicsUpdate(double delta)
@@ -49,5 +52,16 @@ public partial class WalkState : State //行走状态
             EmitSignal(nameof(StateFinished), "SprintState");
             return;
         }
+        if (isHurt)
+        {
+            EmitSignal(nameof(StateFinished), "HurtState");
+            isHurt = false;
+            return;
+        }
+    }
+
+    public void OnHurtChanged()
+    {
+        isHurt = true;
     }
 }

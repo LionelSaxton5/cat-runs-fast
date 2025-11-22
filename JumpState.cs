@@ -3,14 +3,17 @@ using System;
 
 public partial class JumpState : State //跳跃状态
 {
+    private bool isHurt = false; //是否受伤
+    
     public override void Enter()
     {
 		player.AnimationPlayback("jump");
+        player.Attributes.HurtChanged += OnHurtChanged; //订阅血量变化信号
     }
 
     public override void Exit()
     {
-        
+        player.Attributes.HurtChanged -= OnHurtChanged;
     }
 	
 	public override void PhysicsUpdate(double delta)
@@ -44,5 +47,15 @@ public partial class JumpState : State //跳跃状态
                 return;
             }
         }
+        if (isHurt)
+        {
+            EmitSignal(nameof(StateFinished), "HurtState");
+            isHurt = false;
+            return;
+        }
+    }
+    public void OnHurtChanged()
+    {
+        isHurt = true;
     }
 }

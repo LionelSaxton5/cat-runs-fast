@@ -3,13 +3,20 @@ using System;
 
 public partial class LickState : State //舔状态
 {
+    private bool isHurt = false;
 
     public override void Enter()
     {
         player.AnimationPlayback("lick"); //舔动画
+        player.Attributes.HurtChanged += OnHurtChanged;
     }
 	
-	public override void PhysicsUpdate(double delta)
+    public override void Exit()
+    {
+        player.Attributes.HurtChanged -= OnHurtChanged;
+    }
+
+    public override void PhysicsUpdate(double delta)
 	{
         if (Input.IsActionPressed("left") || Input.IsActionPressed("right") && player.IsOnFloor())
         {
@@ -31,5 +38,15 @@ public partial class LickState : State //舔状态
             EmitSignal(nameof(StateFinished), "ScareState");
             return;
         }
+        if (isHurt)
+        {
+            EmitSignal(nameof(StateFinished), "HurtState");
+            isHurt = false;
+            return;
+        }
+    }
+    public void OnHurtChanged()
+    {
+        isHurt = true;
     }
 }

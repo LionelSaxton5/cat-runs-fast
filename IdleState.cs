@@ -5,6 +5,7 @@ public partial class IdleState : State //待机状态
 {
 	private Timer idletimer; //待机计时器
     private bool isTimerConnected = false; //计时器信号是否已连接
+	private bool isHurt = false; //是否受伤   
 
     public override void Enter() //进入状态时调用,由StateMachine状态机调用
     {
@@ -21,6 +22,7 @@ public partial class IdleState : State //待机状态
 			idletimer.Timeout += OnIdleTimerTimeout;//连接计时器超时信号
 			isTimerConnected = true;
         }
+        player.Attributes.HurtChanged += OnHurtChanged; //订阅血量变化信号
     }
 
 	public override void Exit() //退出状态时调用
@@ -31,6 +33,7 @@ public partial class IdleState : State //待机状态
 			idletimer.Timeout -= OnIdleTimerTimeout;
 			isTimerConnected= false;
 		}
+		player.Attributes.HurtChanged -= OnHurtChanged; //取消订阅血量变化信号
     }
 
 	public override void PhysicsUpdate(double delta) //每帧物理更新时调用
@@ -60,7 +63,13 @@ public partial class IdleState : State //待机状态
 		{
             EmitSignal(nameof(StateFinished), "ScareState"); //切换到吓唬状态
 			return;
-        }    
+        }
+		if (isHurt)
+		{
+			EmitSignal(nameof(StateFinished), "HurtState"); //切换到受伤状态
+            isHurt = false;
+            return;
+		}
     }
 
 	private void OnIdleTimerTimeout() //计时器超时处理函数
@@ -73,6 +82,11 @@ public partial class IdleState : State //待机状态
 			if (randomNumber == 0) EmitSignal(nameof(StateFinished), "LieDownState"); //切换到躺下状态        
 			else EmitSignal(nameof(StateFinished), "LickState"); //切换到舔状态  
 		}
+    }
+
+	public void OnHurtChanged()
+	{
+		isHurt = true;
     }
 
 }

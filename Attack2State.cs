@@ -1,29 +1,34 @@
 using Godot;
 using System;
+using static CombatSystem;
 
 public partial class Attack2State : State //强化攻击状态
 {
-    public bool isenAttack = false; //是否正在攻击
+    public bool isAttack = false; //是否正在攻击
 
     public override void Enter()
-    {
+    {       
         player.AnimationPlayback("attack2");
-        isenAttack = true;
+        animationPlayer.Play("Attack2");
+
+        isAttack = true;
 
         if (player.cat.Visible)
         {
             GD.Print("连接强化攻击动画完成信号");
             player.cat.AnimationFinished += OnEnAttackAnimationFinished; //动画完成信号
+            attackArea.BodyEntered += OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
         }
     }
 	
     public override void Exit()
     {
-        isenAttack = false;
+        isAttack = false;
         if (player.cat.Visible)
         {
             GD.Print("断开强化攻击动画完成信号");
             player.cat.AnimationFinished -= OnEnAttackAnimationFinished; //断开动画完成信号
+            attackArea.BodyEntered -= OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
         }
     }
 
@@ -32,7 +37,7 @@ public partial class Attack2State : State //强化攻击状态
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
-        if (isenAttack)
+        if (isAttack)
             return;
 
         if (absSpeed <= 10f && player.IsOnFloor())
@@ -55,7 +60,23 @@ public partial class Attack2State : State //强化攻击状态
     private void OnEnAttackAnimationFinished()
     {       
         GD.Print("强化攻击动画完成");
-        isenAttack = false; //攻击结束
+        isAttack = false; //攻击结束
         
+    }
+
+    public void OnAttackAreaBodyEntered(Node body)
+    {
+        if (isAttack && body is Enemy enemy)           
+        {           
+            DamageInfo damageInfo = new DamageInfo
+            {
+                DamageAmount = player.Attributes.AttackPower * (int)2.5f, //强化攻击伤害翻倍
+                DamagePosition = player.GlobalPosition,
+                KnockbackForce = player.Attributes.KnockbackForce,
+                SourceDamage = this.player,
+                TargetDamage = enemy
+            };
+            combatSystem.ApplyDamage(enemy, damageInfo);
+        }
     }
 }

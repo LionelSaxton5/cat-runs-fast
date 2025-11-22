@@ -16,7 +16,7 @@ public partial class CharacterAttributes : Node //角色属性
     [Export] public int CurrentMana { get; private set; } = 100; //当前魔法值
     [Export] public int ManaSpeed { get; private set; } = 4; //魔法回复速度
     [Export] public int AttackPower { get; private set; } = 20; //攻击力
-    [Export] public float KnockbackForce { get; private set; } = 300f; //击退力
+    [Export] public float KnockbackForce { get; private set; } = 100f; //击退力
     [Export] public int MaxStamina { get; private set; } = 100; //最大体力值
     [Export] public int CurrentStamina { get; private set; } = 100; //当前体力值
     [Export] public float MoveSpeedMultiplier { get; private set; } = 1.0f; //移动速度倍率
@@ -30,11 +30,12 @@ public partial class CharacterAttributes : Node //角色属性
     [Export] public float AttackCooldown = 0.3f; //攻击冷却时间（秒）
 
     //===通信系统 - 用于状态机通信===
-    [Signal] public delegate void HealthChangedEventHandler(int newHealth, int max); //生命值变化信号
+    [Signal] public delegate void HealthChangedEventHandler(int newHealth, int maxHealth); //生命值变化信号
     [Signal] public delegate void ManaChangedEventHandler(int newMana, int maxMana); //魔法值变化信号
     [Signal] public delegate void StaminaChangedEventHandler(int newStamina, int maxStamina); //体力值变化信号
     [Signal] public delegate void AttackChangedEventHandler(int newAttack); //攻击力变化信号
     [Signal] public delegate void IsDeathChangedEventHandler(); //死亡信号
+    [Signal] public delegate void HurtChangedEventHandler(); //受伤信号
 
     public override void _Ready()
 	{
@@ -53,12 +54,15 @@ public partial class CharacterAttributes : Node //角色属性
     //===属性操作方法===
     public void TakeDamage(int damage) //受到伤害
     {
+        GD.Print("角色受到伤害: " + damage);
         CurrentHealth = Mathf.Max(0, CurrentHealth - damage); //取大值
+        GD.Print("当前血量: " + CurrentHealth);
         EmitSignal(nameof(HealthChanged), CurrentHealth, MaxHealth); //血量变化信号
+        EmitSignal(nameof(HurtChanged)); //受伤信号
 
         if (CurrentHealth <= 0 && IsDeath)
         {
-            EmitSignal(nameof(IsDeathChangedEventHandler));
+            EmitSignal(nameof(IsDeathChanged));
         }
     }
 
@@ -76,7 +80,7 @@ public partial class CharacterAttributes : Node //角色属性
 
     public void MagicReply(int amount) //魔法回复
     {
-        CurrentMana = Mathf.Min(0, CurrentMana + amount);
+        CurrentMana = Mathf.Min(CurrentMana + amount, MaxMana);
         EmitSignal(nameof(ManaChanged), CurrentMana, MaxMana);
     }
 

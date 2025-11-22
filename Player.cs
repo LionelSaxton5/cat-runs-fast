@@ -39,7 +39,10 @@ public partial class Player : CharacterBody2D
     private float jumpBufferTime = 0.0f; //跳跃缓冲时间，“容错”机制，允许玩家在“快要落地”时提前按下跳跃键，角色落地瞬间会自动跳起
     private const float JumpBufferDuration = 0.1f; //当前剩余的跳跃缓冲时间
     private bool jumpKeyReleased = false; // 跳跃键是否已释放
-    
+
+    //攻击相关
+    private Area2D attackArea; //攻击范围节点
+
     public override void _Ready()
     {
         //初始化节点
@@ -48,7 +51,7 @@ public partial class Player : CharacterBody2D
         idletimer = GetNode<Timer>("IdleTimer");
         wallDetector = GetNode<RayCast2D>("WallDetector");
         cliffDetector = GetNode<RayCast2D>("WallDetector/CliffDetector");
-
+        attackArea = GetNode<Area2D>("AttackArea2D");
         //cat.Visible = false; //初始不可见
 
         //获取状态机子节点
@@ -231,6 +234,11 @@ public partial class Player : CharacterBody2D
         isfacingright = facingright; //更新方向
         person.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
         cat.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
+
+        if (attackArea != null)
+        {
+            attackArea.Position = new Vector2(facingright ? Mathf.Abs(attackArea.Position.X) : -Mathf.Abs(attackArea.Position.X), attackArea.Position.Y);
+        }
     }
 
     private void InversionDetector(bool facingright) //反转检测器

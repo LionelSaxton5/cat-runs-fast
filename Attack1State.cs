@@ -95,8 +95,9 @@ public partial class Attack1State : State //普通攻击状态
         }
     }
 
-    public void OnAttackAreaBodyEntered(Node2D body)
+    public void OnAttackAreaBodyEntered(Node body)
     {
+        GD.Print("攻击范围内检测到碰撞体: " + body.Name);
         if (isAttack && body is Enemy enemy) //检测到敌人
         {
             DamageInfo damageInfo = new DamageInfo

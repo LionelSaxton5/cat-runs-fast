@@ -11,7 +11,8 @@ public partial class Camera2d : Camera2D //人物相机
     //===攻击震动相关===
     private float vibrationTime = 0f; //震动计时
     private const float VibrationDuration = 0.2f; //震动持续时间
-    private bool isVibrating = false; //是否震动
+    private float VibrationRange = 1f; //震动范围
+    private bool isVibrating = false; //是否可以震动
     private bool isRecovering = false; //是否正在恢复
     Random random = new Random();
 
@@ -20,8 +21,14 @@ public partial class Camera2d : Camera2D //人物相机
     public float attackZoom = 3.75f; //相机视口最小缩放值
     private float currentZoom = 3.51f; //当前相机缩放值
 
+    //===是否命中===
+    public bool isPlayerAttackHit = false; //玩家是否命中
+    public bool isEnemyAttackHit = false; //敌人是否命中
+
+    //===节点引用===
     private Player player;
-    private Attack1State attack1State;
+    private Attack1State attack1State; //玩家攻击1
+    private CombatSystem combatSystem; //战斗系统单例
 
     public override void _Ready()
 	{
@@ -39,16 +46,18 @@ public partial class Camera2d : Camera2D //人物相机
             GD.Print("Camera2d: 成功连接攻击信号");
         }
         
+        combatSystem = CombatSystem.Instance; //获取战斗系统单例
+        combatSystem.PlayerAttackHit += OnPlayerAttackHit;
+        combatSystem.EnemyAttackHit += OnEnemyAttackHit;
     }
 
 	public override void _Process(double delta)
 	{
 		float deltaF = (float)delta;
-
+        
         if (isVibrating || isRecovering)
-        {
-            if(!CombatSystem.Instance.IsVibrating)
-                AttackVibration(deltaF);
+        {            
+            AttackVibration(deltaF);
         }       
         else if (Mathf.Abs(player.currentspeed) < 5f && player.IsOnFloor())
         {
@@ -57,8 +66,37 @@ public partial class Camera2d : Camera2D //人物相机
 
     }
 
+    public void OnPlayerAttackHit()
+    {
+        attackZoom = 5.6f;
+        VibrationRange = 2.5f;
+        isPlayerAttackHit = true;
+
+        isVibrating = true;
+        isRecovering = false;
+        vibrationTime = 0f;
+        GD.Print("=== 玩家攻击命中 ===");
+    }
+    public void OnEnemyAttackHit()
+    {
+        attackZoom = 4.0f;
+        VibrationRange = 1.5f;
+        isEnemyAttackHit = true;
+
+        isVibrating = true;
+        isRecovering = false;
+        vibrationTime = 0f;
+        GD.Print("=== 敌人攻击命中 ===");
+    }
+
     public void OnAttackTriggered()
     {
+        if (!isPlayerAttackHit && !isEnemyAttackHit)
+        {
+            attackZoom = 3.75f;
+            VibrationRange = 1.0f;
+        }
+
         isVibrating = true;
         isRecovering = false;
         vibrationTime = 0f;
@@ -85,26 +123,28 @@ public partial class Camera2d : Camera2D //人物相机
 
         if (isVibrating)
         {
-            float vibrationX = (float)(random.NextDouble() * 2 - 1) * 1f; //范围 -1 到 1
-            float vibrationY = (float)(random.NextDouble() * 2 - 1) * 1f; //范围 -1 到 1         
-            Offset = new Vector2(vibrationX, vibrationY);
+            float vibrationX = (float)(random.NextDouble() * 2 - 1) * VibrationRange; //范围 -1 到 1
+            float vibrationY = (float)(random.NextDouble() * 2 - 1) * VibrationRange; //范围 -1 到 1         
+            Offset = new Vector2(vibrationX, vibrationY); //应用震动
 
             currentZoom = Mathf.MoveToward(currentZoom, attackZoom, 5f * delta);
-            Zoom = new Vector2(currentZoom, currentZoom);
+            Zoom = new Vector2(currentZoom, currentZoom); //应用缩放
 
             if (vibrationTime >= VibrationDuration)
             {
                 isVibrating = false;
                 isRecovering = true;
+                isPlayerAttackHit = false;
+                isEnemyAttackHit = false;
                 GD.Print("开始恢复");
             }
         }
         else if (isRecovering)
         {
-            Offset = Vector2.Zero;
+            Offset = Vector2.Zero; //重置偏移
 
-            currentZoom = Mathf.MoveToward(currentZoom, normalZoom, 20f * delta);
-            Zoom = new Vector2(currentZoom, currentZoom);
+            currentZoom = Mathf.MoveToward(currentZoom, normalZoom, 25f * delta); 
+            Zoom = new Vector2(currentZoom, currentZoom); //恢复收缩
 
             if (Mathf.Abs(currentZoom - normalZoom) < 0.01f)
             {
