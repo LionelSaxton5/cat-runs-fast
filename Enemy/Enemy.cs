@@ -2,6 +2,7 @@ using Godot;
 using System;
 using System.Security.Cryptography.X509Certificates;
 using static CombatSystem;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public partial class Enemy : CharacterBody2D //怪物基类
 {   
@@ -59,6 +60,10 @@ public partial class Enemy : CharacterBody2D //怪物基类
     private const double SlopeStuckThreshold = 2.0; //斜坡停留阈值（秒）
     private bool isEscapingSlope = false; //是否正在逃离斜坡
 
+    //===击退状态相关===
+    private bool isInKnockback = false; //是否处于击退状态
+    private double knockbackTimer = 0.0; //击退计时器
+    private const double KnockbackDuration = 0.6; //击退持续时间
 
     public override void _Ready()
 	{
@@ -96,8 +101,17 @@ public partial class Enemy : CharacterBody2D //怪物基类
             turnAroundCooldown -= delta;
         }
 
-        directionCheck = CheckDirection(); //更新方向决策结果,每帧创建
+        if (isEscapingSlope)
+        {
+            knockbackTimer -= delta;
+            if (knockbackTimer <= 0)
+            {
+                isEscapingSlope = false;
+                GD.Print($"[{Name}] 击退完成");
+            }
+        }
 
+        directionCheck = CheckDirection(); //更新方向决策结果,每帧创建       
         CheckAndEscapeSlope(delta); //检查并逃离斜坡
 
         if (currentState != EnemyState.death)
@@ -115,7 +129,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
     {
 		if (currentState == newState) return; //如果新状态与当前状态相同,则不进行状态切换
 
-        GD.Print($"切换状态: {currentState} -> {newState}");
+        //GD.Print($"切换状态: {currentState} -> {newState}");
         ExitState(currentState); //调用当前状态的退出方法
 
 		previousState = currentState; //保存当前状态为上一个状态
@@ -184,7 +198,6 @@ public partial class Enemy : CharacterBody2D //怪物基类
             // 玩家在附近但在背后
             if (turnAroundCooldown <= 0)
             {
-                GD.Print($"[Idle] 感知到背后有玩家，转身");
                 SetFacingDirection(directionCheck.PlayerOnRight);
                 turnAroundCooldown = 0.2f;
             }
@@ -232,7 +245,6 @@ public partial class Enemy : CharacterBody2D //怪物基类
         {          
             if (turnAroundCooldown <= 0)
             {
-                GD.Print($"[Walk] 感知到背后有玩家（距离:{directionCheck.PlayerDistance:F0}），转身");
                 SetFacingDirection(directionCheck.PlayerOnRight);
                 turnAroundCooldown = 0.2f; // 短冷却，避免抖动
             }
@@ -449,37 +461,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
         return result;
     }
-
-    private void CheckAndEscapeSlope(double delta) //逃离斜坡
-    {
-        if (currentState == EnemyState.death) return;
-
-        bool onSlope = directionCheck.HasSteepSlope; //检测是否在斜坡上
-        if (onSlope)
-        {
-            slopeStuckTimer += delta;
-            if (slopeStuckTimer >= SlopeStuckThreshold)
-            {
-                isEscapingSlope = true;
-                GD.Print($"[{Name}] 卡在斜坡上，启动逃离机制");
-            }
-        }
-        else
-        {
-            slopeStuckTimer = 0.0;
-            isEscapingSlope = false;
-        }
-
-        if (isEscapingSlope)
-        {
-            // 反方向移动以逃离斜坡
-            float escapeSpeed = attributes.MoveSpeed * 1.5f;
-            ChangeState(EnemyState.run); //切换到奔跑状态
-            Velocity = new Vector2(isfacingright ? -escapeSpeed : escapeSpeed, Velocity.Y);
-            GD.Print($"[{Name}] 逃离斜坡中，速度: {Velocity.X}");
-        }
-    }
-
+    
     protected void SetFacingDirection(bool faceRight) //统一设置面向方向方法
     {
         if (isfacingright == faceRight) return; // 方向相同则跳过
@@ -526,6 +508,49 @@ public partial class Enemy : CharacterBody2D //怪物基类
         }
     }
 
+    private void CheckAndEscapeSlope(double delta) //逃离斜坡
+    {
+        if (currentState == EnemyState.death) return;
+
+        bool onSlope = directionCheck.HasSteepSlope; //检测是否在斜坡上
+        if (onSlope)
+        {
+            slopeStuckTimer += delta;
+            if (slopeStuckTimer >= SlopeStuckThreshold)
+            {
+                isEscapingSlope = true;
+                GD.Print($"[{Name}] 卡在斜坡上，启动逃离机制");
+            }
+        }
+        else
+        {
+            slopeStuckTimer = 0.0;
+            isEscapingSlope = false;
+        }
+
+        if (isEscapingSlope)
+        {
+            // 反方向移动以逃离斜坡
+            float escapeSpeed = attributes.MoveSpeed * 1.5f;
+            ChangeState(EnemyState.run); //切换到奔跑状态
+            Velocity = new Vector2(isfacingright ? -escapeSpeed : escapeSpeed, Velocity.Y);
+            GD.Print($"[{Name}] 逃离斜坡中，速度: {Velocity.X}");
+        }
+    }
+
+    public void StartKnockback()
+    {
+        isEscapingSlope = true;
+        knockbackTimer = KnockbackDuration;
+    }
+
+    public bool CanAcceptKnockback()
+    {
+        return !isEscapingSlope && currentState != EnemyState.death;
+    }
+
+
+
     public void LimitKnockbackVelocity(ref Vector2 knockbackVelocity) //限制击退速度方法
     {
         bool originalFacing = isfacingright; //保存当前朝向
@@ -540,14 +565,12 @@ public partial class Enemy : CharacterBody2D //怪物基类
         {
             GD.Print($"[{Name}] 击退方向前方有陡坡，减弱击退");
             knockbackVelocity.X *= 0.3f;
-            Velocity = new Vector2(knockbackVelocity.X, knockbackVelocity.Y);
         }
         else if (obstacleCheck.HasWall)
         {
             GD.Print($"[{Name}] 击退方向前方有墙壁，阻止击退");
             knockbackVelocity.X = -knockbackVelocity.X * 0.4f;
             knockbackVelocity.Y *= 0.5f;
-            Velocity = new Vector2(knockbackVelocity.X, knockbackVelocity.Y);
         }
     }
 

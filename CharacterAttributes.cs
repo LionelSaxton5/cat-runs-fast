@@ -19,6 +19,7 @@ public partial class CharacterAttributes : Node //角色属性
     [Export] public float KnockbackForce { get; private set; } = 100f; //击退力
     [Export] public int MaxStamina { get; private set; } = 100; //最大体力值
     [Export] public int CurrentStamina { get; private set; } = 100; //当前体力值
+    [Export] public int StaminaRecoveryRate { get; private set; } = 5; //体力回复速度
     [Export] public float MoveSpeedMultiplier { get; private set; } = 1.0f; //移动速度倍率
     [Export] public float JumpPowerMultiplier { get; private set; } = 1.0f; //跳跃力倍率
 
@@ -49,6 +50,7 @@ public partial class CharacterAttributes : Node //角色属性
     {
         Heal(HealthSpeed); //生命回复
         MagicReply(ManaSpeed); //魔法回复
+        StaminaReply(StaminaRecoveryRate); //体力回复
     }
 
     //===属性操作方法===
@@ -84,10 +86,22 @@ public partial class CharacterAttributes : Node //角色属性
         EmitSignal(nameof(ManaChanged), CurrentMana, MaxMana);
     }
 
-    public void StaminaReduction(int staminaamount) //体力扣除
+    public bool StaminaReduction(int staminaamount) //体力扣除
     {
-        CurrentStamina = Mathf.Max(0, CurrentStamina - staminaamount);
-        EmitSignal(nameof(StaminaChanged), CurrentStamina, MaxStamina); //体力变化信号    
+        if (CurrentStamina >= staminaamount)
+        {
+            CurrentStamina = Mathf.Max(0, CurrentStamina - staminaamount);
+            EmitSignal(nameof(StaminaChanged), CurrentStamina, MaxStamina); //体力变化信号
+            return true;
+        }
+                                                                        
+        return false; //体力不足返回false
+    }
+
+    public void StaminaReply(int amount) //体力回复
+    {
+        CurrentStamina = Mathf.Min(CurrentStamina + amount, MaxStamina);
+        EmitSignal(nameof(StaminaChanged), CurrentStamina, MaxStamina);
     }
 
     //===属性修改系统(用于状态机)===

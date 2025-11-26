@@ -15,7 +15,6 @@ public partial class Attack2State : State //强化攻击状态
 
         if (player.cat.Visible)
         {
-            GD.Print("连接强化攻击动画完成信号");
             player.cat.AnimationFinished += OnEnAttackAnimationFinished; //动画完成信号
             attackArea.BodyEntered += OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
         }
@@ -26,7 +25,6 @@ public partial class Attack2State : State //强化攻击状态
         isAttack = false;
         if (player.cat.Visible)
         {
-            GD.Print("断开强化攻击动画完成信号");
             player.cat.AnimationFinished -= OnEnAttackAnimationFinished; //断开动画完成信号
             attackArea.BodyEntered -= OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
         }
@@ -59,9 +57,7 @@ public partial class Attack2State : State //强化攻击状态
 
     private void OnEnAttackAnimationFinished()
     {       
-        GD.Print("强化攻击动画完成");
-        isAttack = false; //攻击结束
-        
+        isAttack = false; //攻击结束        
     }
 
     public void OnAttackAreaBodyEntered(Node body)

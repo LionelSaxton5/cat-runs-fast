@@ -6,9 +6,22 @@ public partial class SlideState : State //墙上滑动
     public bool isSliding = false; //是否正在滑动
     private Vector2 originalOffset; //原始碰撞体偏移量
     private bool wallOnRight = true; //墙壁是否在右侧
+    private Timer slideTimer; //滑动耐力计时器
 
     public override void Enter()
     {
+        if (!player.Attributes.StaminaReduction(10))
+        {
+            isSliding = false;
+            EmitSignal(nameof(StateFinished), "JumpState");
+            return; //如果耐力不足则不进入滑动状态
+        }
+
+        slideTimer = new Timer();
+        slideTimer.WaitTime = 1.0f; //每秒扣除耐力
+        slideTimer.Connect("timeout", new Callable(this, nameof(OnslideTimer)));
+        player.AddChild(slideTimer);
+
         player.AnimationPlayback("slide"); //播放滑动动画
         isSliding = true;
         wallOnRight = player.isfacingright; //记录墙壁所在方向
@@ -21,7 +34,7 @@ public partial class SlideState : State //墙上滑动
 
             float offsetX = player.isfacingright ? 12f : -12f;
             player.cat.Offset = new Vector2(offsetX, originalOffset.Y); //调整猫咪偏移量
-        }
+        }      
     }
 
     public override void Exit()
@@ -30,6 +43,12 @@ public partial class SlideState : State //墙上滑动
         if (player.cat != null && player.cat.Visible)
         {
             player.cat.Offset = originalOffset; //恢复原始偏移量
+        }
+        if (slideTimer != null)
+        {
+            slideTimer.Stop();
+            slideTimer.QueueFree();
+            slideTimer = null;
         }
     }
 
@@ -46,4 +65,14 @@ public partial class SlideState : State //墙上滑动
             return;
         }       
 	}
+    public void OnslideTimer()
+    {
+        if (isSliding)
+        {
+            if (!player.Attributes.StaminaReduction(5))
+            {
+                EmitSignal(nameof(StateFinished), "JumpState");
+            }
+        }
+    }
 }

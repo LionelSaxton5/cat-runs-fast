@@ -8,6 +8,7 @@ public partial class Attack1State : State //普通攻击状态
     public bool isAttack = false; //是否正在攻击 
     private Timer attackTimer; //攻击计时器
     private bool enhancedattack = false; //是否进行强化攻击
+    private bool isHurt = false;
 
     [Signal] public delegate void Attack1TriggeredEventHandler(); //普通攻击触发信号
    
@@ -15,9 +16,9 @@ public partial class Attack1State : State //普通攻击状态
     {
         if (player.cat.Visible)
         {
-            GD.Print("连接攻击动画完成信号");
             player.cat.AnimationFinished += OnAttackAnimationFinished; //动画完成信号
             attackArea.BodyEntered += OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
+            player.Attributes.HurtChanged += OnHurtChanged;
         }
 
         player.AnimationPlayback("attack1");
@@ -27,7 +28,6 @@ public partial class Attack1State : State //普通攻击状态
 
         isAttack = true;
         attackcount++;
-        GD.Print("普通攻击次数: " + attackcount);
         
         //设置攻击计时器
         attackTimer = new Timer();
@@ -43,7 +43,6 @@ public partial class Attack1State : State //普通攻击状态
         isAttack = false;
         if (player.cat.Visible)
         {
-            GD.Print("断开攻击动画完成信号");
             player.cat.AnimationFinished -= OnAttackAnimationFinished; //断开动画完成信号
             attackArea.BodyEntered -= OnAttackAreaBodyEntered; //断开攻击范围碰撞信号
         }
@@ -53,6 +52,7 @@ public partial class Attack1State : State //普通攻击状态
             attackTimer.QueueFree(); //移除计时器节点
             attackTimer = null;
         }
+        player.Attributes.HurtChanged -= OnHurtChanged;
     }
 
 	public override void PhysicsUpdate(double delta)
@@ -79,13 +79,18 @@ public partial class Attack1State : State //普通攻击状态
         {
             EmitSignal(nameof(StateFinished), "WalkState");
             return;
-        }          
+        }
+        if (isHurt)
+        {
+            EmitSignal(nameof(StateFinished), "HurtState");
+            isHurt = false;
+            return;
+        }
     }
   
     public void OnAttackAnimationFinished()
     {
-        isAttack = false;
-        GD.Print("攻击动画完成");
+        isAttack = false;;
         if (attackcount >= 3) //如果攻击次数达到3次，立即追击进行强化攻击
         {
             EmitSignal(nameof(StateFinished), "Attack2State"); //强化攻击状态
@@ -115,5 +120,10 @@ public partial class Attack1State : State //普通攻击状态
     public void OnAttackTimerTimeout() //看门狗，防止卡在攻击状态
     {
         isAttack = false;
+    }
+
+    public void OnHurtChanged()
+    {
+        isHurt = true;
     }
 }

@@ -20,6 +20,8 @@ public partial class SprintState : State //冲刺状态
         AddChild(sprintTimer); //添加为子节点
         sprintTimer.Timeout += OnSprintTimerTimeout; //连接计时器超时信号
         sprintTimer.Start(); //启动计时器
+
+        player.Attributes.StaminaReduction(10); //消耗体力
     }
 
     public override void Exit()
