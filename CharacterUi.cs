@@ -62,7 +62,6 @@ public partial class CharacterUi : CanvasLayer //角色界面
 
     public void OnHealthChanged(int currenthealth, int maxhealth)
 	{
-		GD.Print("更新血条UI");
         hp.MaxValue = maxhealth;
 		hp.Value = currenthealth;
         hplabel.Text = $"{currenthealth} / {maxhealth}";

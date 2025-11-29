@@ -63,7 +63,12 @@ public partial class SlideState : State //墙上滑动
 
             EmitSignal(nameof(StateFinished), "JumpState");
             return;
-        }       
+        }
+        if (!player.wallDetector.IsColliding())
+        {
+            EmitSignal(nameof(StateFinished), "JumpState");
+            return;
+        }
 	}
     public void OnslideTimer()
     {

@@ -17,6 +17,7 @@ public partial class Attack2State : State //强化攻击状态
         {
             player.cat.AnimationFinished += OnEnAttackAnimationFinished; //动画完成信号
             attackArea.BodyEntered += OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
+
         }
     }
 	

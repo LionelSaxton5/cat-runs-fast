@@ -154,6 +154,5 @@ public partial class Camera2d : Camera2D //人物相机
                 Offset = Vector2.Zero;
             }
         }
-
     }
 }

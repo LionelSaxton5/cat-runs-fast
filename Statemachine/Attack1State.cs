@@ -8,17 +8,34 @@ public partial class Attack1State : State //普通攻击状态
     public bool isAttack = false; //是否正在攻击 
     private Timer attackTimer; //攻击计时器
     private bool enhancedattack = false; //是否进行强化攻击
+    private bool PreemptiveAttack = false; //是否进行预判攻击
     private bool isHurt = false;
+    private bool _signalsConnected = false; //信号是否已连接
 
     [Signal] public delegate void Attack1TriggeredEventHandler(); //普通攻击触发信号
    
     public override void Enter()
     {
-        if (player.cat.Visible)
+        if (isHurt)
+        {
+            GD.Print("玩家受伤中，取消攻击");
+            return;
+        }
+
+        if (attackcount >= 3) //如果攻击次数达到3次，进行强化攻击
+        {
+            EmitSignal(nameof(StateFinished), "Attack2State"); //强化攻击状态
+            attackcount = 0;
+            enhancedattack = false;
+            return;
+        }
+
+        if (player.cat.Visible && !_signalsConnected)
         {
             player.cat.AnimationFinished += OnAttackAnimationFinished; //动画完成信号
             attackArea.BodyEntered += OnAttackAreaBodyEntered; //连接攻击范围碰撞信号
             player.Attributes.HurtChanged += OnHurtChanged;
+            _signalsConnected = true;
         }
 
         player.AnimationPlayback("attack1");
@@ -39,31 +56,48 @@ public partial class Attack1State : State //普通攻击状态
     }
 
     public override void Exit()
-    {
+    {       
         isAttack = false;
-        if (player.cat.Visible)
+        if (_signalsConnected)
         {
             player.cat.AnimationFinished -= OnAttackAnimationFinished; //断开动画完成信号
             attackArea.BodyEntered -= OnAttackAreaBodyEntered; //断开攻击范围碰撞信号
+            player.Attributes.HurtChanged -= OnHurtChanged;
+            _signalsConnected = false;
         }
         if (attackTimer != null)
         {
             attackTimer.Timeout -= OnAttackTimerTimeout; //断开计时器超时信号
             attackTimer.QueueFree(); //移除计时器节点
             attackTimer = null;
-        }
-        player.Attributes.HurtChanged -= OnHurtChanged;
+        }       
     }
 
 	public override void PhysicsUpdate(double delta)
 	{
         float absSpeed = Mathf.Abs(player.currentspeed);
 
+        if (isHurt)
+        {
+            EmitSignal(nameof(StateFinished), "HurtState");
+            isHurt = false;
+            return;
+        }
+        if (isAttack)
+        {
+            if(Input.IsActionJustPressed("attack"))
+            {
+                PreemptiveAttack = true; //准备进行预判攻击
+            }
+            else
+            {
+                PreemptiveAttack = false;
+            }
+        }
         if (isAttack)
             return;
-        if(attackcount == 3) enhancedattack = true; //准备进行强化攻击
-        if (enhancedattack)
-            return;
+
+        if(attackcount == 3) enhancedattack = true; //准备进行强化攻击       
 
         if (absSpeed <= 10f && player.IsOnFloor())
         {
@@ -79,24 +113,16 @@ public partial class Attack1State : State //普通攻击状态
         {
             EmitSignal(nameof(StateFinished), "WalkState");
             return;
-        }
-        if (isHurt)
-        {
-            EmitSignal(nameof(StateFinished), "HurtState");
-            isHurt = false;
-            return;
-        }
+        }       
     }
   
     public void OnAttackAnimationFinished()
     {
-        isAttack = false;;
-        if (attackcount >= 3) //如果攻击次数达到3次，立即追击进行强化攻击
+        isAttack = false;
+        
+        if (attackcount < 3 && PreemptiveAttack)
         {
-            EmitSignal(nameof(StateFinished), "Attack2State"); //强化攻击状态
-            attackcount = 0;
-            enhancedattack = false;
-            return;
+            EmitSignal(nameof(StateFinished), "Attack1State"); //继续普通攻击状态
         }
     }
 

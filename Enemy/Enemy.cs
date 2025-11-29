@@ -28,6 +28,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
     private AnimatedSprite2D animatedSprite;
     private Area2D attackArea;
+    private CollisionShape2D collisionShape2D; //怪物碰撞体
     private Player player;
     public EnemyAttributes attributes;
     private CombatSystem combatSystem;
@@ -72,6 +73,7 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
         player = GetTree().GetNodesInGroup("Player")[0] as Player;
         animatedSprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
+        collisionShape2D = GetNode<CollisionShape2D>("CollisionShape2D");
         attackArea = GetNode<Area2D>("AttackArea2D");
         animationPlayer = GetNode<AnimationPlayer>("AttackArea2D/AnimationPlayer");
 
@@ -95,6 +97,12 @@ public partial class Enemy : CharacterBody2D //怪物基类
 	public override void _PhysicsProcess(double delta)
 	{
 		stateTimer += delta; //更新状态计时器
+
+        //if (!attributes.IsAlive)
+        //{
+            //collisionShape2D.Disabled = true; //禁用碰撞体
+            //return;
+        //}
 
         if (turnAroundCooldown > 0)
         {
@@ -361,8 +369,17 @@ public partial class Enemy : CharacterBody2D //怪物基类
 
     //=== 受伤状态 ===
     protected virtual void EnterHurt() 
-    {        
-        animatedSprite.Play("hurt");
+    {
+        if (currentState == EnemyState.death) return;
+        if (currentState != EnemyState.hurt)
+        {
+            ChangeState(EnemyState.hurt);
+        }
+        else
+        {
+            stateTimer = 0.0; // 重置计时器
+            animatedSprite.Play("hurt");
+        }
     }
     protected virtual void UpdateHurt(double delta)
     {

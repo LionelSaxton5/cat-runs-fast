@@ -5,12 +5,19 @@ public partial class SprintState : State //冲刺状态
 {
 	public bool isSprinting = false; //是否正在冲刺
     private Timer sprintTimer; //冲刺计时器
+    private bool isAnimationConnected = false; //动画完成信号是否已连接
 
     public override void Enter()
     {
+        if (!player.Attributes.StaminaReduction(10)) //消耗体力
+        {
+            return; //体力不足则不进入冲刺状态
+        }
+
         player.AnimationPlayback("sprint"); //冲刺动画
 
         player.cat.AnimationFinished += OnSprintAnimationFinished;
+        isAnimationConnected = true;
 
         isSprinting = true; //设置为冲刺状态
         sprintTimer = new Timer();
@@ -20,14 +27,18 @@ public partial class SprintState : State //冲刺状态
         AddChild(sprintTimer); //添加为子节点
         sprintTimer.Timeout += OnSprintTimerTimeout; //连接计时器超时信号
         sprintTimer.Start(); //启动计时器
-
-        player.Attributes.StaminaReduction(10); //消耗体力
+       
     }
 
     public override void Exit()
     {
         isSprinting = false; //退出冲刺状态
-        player.cat.AnimationFinished -= OnSprintAnimationFinished;
+
+        if (isAnimationConnected)
+        {
+            player.cat.AnimationFinished -= OnSprintAnimationFinished;
+            isAnimationConnected = false;
+        }
 
         if (sprintTimer != null)
         {
