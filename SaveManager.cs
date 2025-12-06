@@ -1,12 +1,19 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 public partial class SaveManager : Node //存档、加载
 {
 	private static SaveManager _instance;
 	public static SaveManager Instance => _instance;
+    private HashSet<string> _completedLevels = new HashSet<string>(); //已完成关卡集合
+
+    public override void _Ready()               
+    {
+        _instance = this;
+    }
 
     //存储数据结构
     public class SaveData
@@ -40,7 +47,7 @@ public partial class SaveManager : Node //存档、加载
         data.PlayerMaxMana = player.Attributes.MaxMana;
         data.PlayerMaxStamina = player.Attributes.MaxStamina;
         data.Playerfacingright = player.isfacingright;
-        //完成关卡
+        data.CompletedLevels = _completedLevels.ToArray();//toarray转换为数组
         //技能树
         data.SaveTime = DateTime.Now;
 
@@ -117,5 +124,11 @@ public partial class SaveManager : Node //存档、加载
 
         //恢复属性
         player.Attributes.SetAttributes(saveData.PlayerMaxHealth, saveData.PlayerHealth, saveData.PlayerMaxMana, saveData.PlayerMana, saveData.PlayerMaxStamina, saveData.PlyaerStamina);
+    }
+
+    public void MarkLevelCompleted(string levelName) //标记关卡完成
+    {
+        if(!_completedLevels.Contains(levelName)) //避免重复添加
+            _completedLevels.Add(levelName);
     }
 }

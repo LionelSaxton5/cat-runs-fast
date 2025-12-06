@@ -9,6 +9,7 @@ public partial class Dog1 : Enemy
 	{
 		base._Ready(); //调用父类的_Ready方法
 		attributes.MaxHealth = 50;
+		attributes.CurrentHealth = 50;
     }
 
 

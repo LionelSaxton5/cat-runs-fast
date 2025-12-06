@@ -5,6 +5,7 @@ public partial class Level1 : Node2D //关卡1
 {
 	private Camera2D camera; //相机节点引用
     private Node2D wapianGroup; //瓦片组父节点
+	public bool levelcompleted = false; //关卡是否完成
 
     // 相机边界偏移量(预留缓冲区)
     [Export] private int boundaryPaddingLeft = 0;
@@ -14,12 +15,19 @@ public partial class Level1 : Node2D //关卡1
 
     public override void _Ready()
 	{
-        GD.Print("Level1 已加载");
         InitializeCamera();
         SetupCameraLimitsFromTileMaps();
     }
 
-	private void InitializeCamera()
+	public override void _Process(double delta)
+	{
+		if (levelcompleted)
+		{
+			SaveManager.Instance.MarkLevelCompleted("Level1");
+        }
+    }
+
+    private void InitializeCamera()
 	{
 		var player = GetTree().GetNodesInGroup("Player");
 		if (player != null && player.Count > 0)

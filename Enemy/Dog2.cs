@@ -8,6 +8,7 @@ public partial class Dog2 : Enemy
 	{
 		base._Ready();
 		attributes.MaxHealth = 100;
+		attributes.CurrentHealth = 100;
 		attributes.AttackPower = 15;
 		attributes.MoveSpeed = 30.0f;
     }

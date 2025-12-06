@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 public partial class Player : CharacterBody2D
 {
@@ -22,6 +23,7 @@ public partial class Player : CharacterBody2D
     //动画播放相关
     private AnimatedSprite2D person; //人物动画节点
     public AnimatedSprite2D cat; //猫咪动画节点
+    private AnimatedSprite2D effectSprite; //特效动画节点
     private string Currentanimation = ""; //当前动画名称    
 
     //状态及相关
@@ -43,15 +45,20 @@ public partial class Player : CharacterBody2D
     //攻击相关
     private Area2D attackArea; //攻击范围节点
 
+    //场景切换相关
+    private Area2D transitionArea2D; //场景切换区域节点
+
     public override void _Ready()
     {
         //初始化节点
         person = GetNode<AnimatedSprite2D>("Person");
         cat = GetNode<AnimatedSprite2D>("Cat");
+        effectSprite = GetNode<AnimatedSprite2D>("EffectSprite");
         idletimer = GetNode<Timer>("IdleTimer");
         wallDetector = GetNode<RayCast2D>("WallDetector");
         cliffDetector = GetNode<RayCast2D>("WallDetector/CliffDetector");
         attackArea = GetNode<Area2D>("AttackArea2D");
+        transitionArea2D = GetNode<Area2D>("TransitionArea2D");
         //cat.Visible = false; //初始不可见
 
         //获取状态机子节点
@@ -239,6 +246,10 @@ public partial class Player : CharacterBody2D
         {
             attackArea.Position = new Vector2(facingright ? Mathf.Abs(attackArea.Position.X) : -Mathf.Abs(attackArea.Position.X), attackArea.Position.Y);
         }
+        if (effectSprite != null)
+        {
+            effectSprite.Position = new Vector2(facingright ? Mathf.Abs(effectSprite.Position.X) : -Mathf.Abs(effectSprite.Position.X), effectSprite.Position.Y);
+        }
     }
 
     private void InversionDetector(bool facingright) //反转检测器
@@ -248,5 +259,12 @@ public partial class Player : CharacterBody2D
         isfacingright = facingright; //更新方向
         wallDetector.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
         cliffDetector.Scale = new Vector2(facingright ? Mathf.Abs(Scale.X) : -Mathf.Abs(Scale.X), Scale.Y);
+    }
+
+    private async Task OnArea2DEntered(Area2D area2D) //传送门
+    {
+        string leveName = area2D.GetMeta("leve_name").ToString(); //获取目标场景名称
+        int spawnIndex = (int)area2D.GetMeta("spawn_index"); //获取出生地(目标门)索引
+        await SceneTransition.Instance.TransitionToScene(leveName, spawnIndex); //场景切换
     }
 }
